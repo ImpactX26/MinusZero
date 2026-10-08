@@ -13,6 +13,7 @@ import { EntityGraph } from '../../pages/EntityGraph';
 import { Analytics } from '../../pages/Analytics';
 import { Settings } from '../../pages/Settings';
 import { InvestigationWorkspace } from '../../pages/InvestigationWorkspace';
+import { MultiBankSimulation } from '../../pages/MultiBankSimulation';
 
 export const AppShell: React.FC = () => {
   // Sync tab with URL hash if available
@@ -21,6 +22,7 @@ export const AppShell: React.FC = () => {
     const validTabs: NavigationTab[] = [
       'command-center',
       'live-events',
+      'simulation',
       'investigations',
       'cases',
       'customers',
@@ -38,6 +40,7 @@ export const AppShell: React.FC = () => {
       const validTabs: NavigationTab[] = [
         'command-center',
         'live-events',
+        'simulation',
         'investigations',
         'cases',
         'customers',
@@ -66,6 +69,8 @@ export const AppShell: React.FC = () => {
         return <CommandCenter />;
       case 'live-events':
         return <LiveEvents />;
+      case 'simulation':
+        return <MultiBankSimulation />;
       case 'investigations':
         return <Investigations />;
       case 'cases':

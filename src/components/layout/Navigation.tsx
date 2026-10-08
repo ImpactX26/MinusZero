@@ -2,6 +2,7 @@ import React from 'react';
 import {
   LayoutDashboard,
   Activity,
+  Zap,
   Search,
   FolderKanban,
   Users,
@@ -13,6 +14,7 @@ import {
 export type NavigationTab =
   | 'command-center'
   | 'live-events'
+  | 'simulation'
   | 'investigations'
   | 'cases'
   | 'customers'
@@ -35,6 +37,7 @@ interface NavItem {
 export const navItems: NavItem[] = [
   { id: 'command-center', label: 'Command Center', icon: LayoutDashboard },
   { id: 'live-events', label: 'Live Events', icon: Activity },
+  { id: 'simulation', label: 'Simulation', icon: Zap },
   { id: 'investigations', label: 'Investigations', icon: Search },
   { id: 'cases', label: 'Cases', icon: FolderKanban },
   { id: 'customers', label: 'Customer Intelligence', icon: Users },
