@@ -1,16 +1,3 @@
-Absolutely — here is a **~20% shorter version** while keeping the important project story, architecture, demo scenarios, and future screenshot section.
-
-```markdown
-# FinGuard AI
-
-> **Autonomous Multi-Agent Banking Fraud Investigation & Response Platform**
-
-**Status:** 🚧 Active Development — Phase 2 Complete  
-**Project:** 24-Hour Hackathon Prototype  
-**Data:** Synthetic Banking Data Only
-
----
-
 ## 🚨 About FinGuard AI
 
 FinGuard AI is an AI-powered fraud investigation platform designed to go beyond simple fraud scoring.
