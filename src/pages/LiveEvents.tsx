@@ -2,21 +2,22 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { query, orderBy, onSnapshot } from 'firebase/firestore';
 import { transactionsCol, customersCol } from '../firebase/collections';
 import { Transaction, Customer } from '../types';
+import { SYNTHETIC_TRANSACTIONS, SYNTHETIC_CUSTOMERS } from '../data/scenarios';
 import { 
   Radio, Search, Filter, ShieldAlert, AlertTriangle, 
   ArrowUpRight, Clock, Activity, ShieldCheck
 } from 'lucide-react';
 
 export const LiveEvents: React.FC = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [customers, setCustomers] = useState<Record<string, Customer>>({});
+  const [transactions, setTransactions] = useState<Transaction[]>(() => SYNTHETIC_TRANSACTIONS);
+  const [customers, setCustomers] = useState<Record<string, Customer>>(() => SYNTHETIC_CUSTOMERS);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRisk, setFilterRisk] = useState<string>('ALL');
 
   useEffect(() => {
     // Fetch customers to enrich events
     const unsubCustomers = onSnapshot(query(customersCol()), (snapshot) => {
-      const custs: Record<string, Customer> = {};
+      const custs: Record<string, Customer> = { ...SYNTHETIC_CUSTOMERS };
       snapshot.forEach(doc => {
         custs[doc.id] = doc.data() as Customer;
       });
@@ -24,12 +25,17 @@ export const LiveEvents: React.FC = () => {
     });
 
     // Fetch transactions
+    const txMap = new Map<string, Transaction>();
+    SYNTHETIC_TRANSACTIONS.forEach(t => txMap.set(t.transaction_id, t));
+
     const unsubTx = onSnapshot(query(transactionsCol(), orderBy('timestamp', 'desc')), (snapshot) => {
-      const txs: Transaction[] = [];
       snapshot.forEach(doc => {
-        txs.push({ ...doc.data(), transaction_id: doc.id } as Transaction);
+        txMap.set(doc.id, { ...doc.data(), transaction_id: doc.id } as Transaction);
       });
-      setTransactions(txs);
+      const sorted = Array.from(txMap.values()).sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      setTransactions(sorted);
     });
 
     return () => {

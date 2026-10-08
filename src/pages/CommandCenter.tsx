@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { ScenarioId, SimulationResult, Case, Transaction } from '../types';
 import { simulateScenario } from '../lib/simulator';
+import { SYNTHETIC_TRANSACTIONS } from '../data/scenarios';
 import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { transactionsCol, casesCol } from '../firebase/collections';
 
@@ -292,11 +293,18 @@ export const CommandCenter: React.FC = () => {
   const simResultRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const txMap = new Map<string, Transaction>();
+    SYNTHETIC_TRANSACTIONS.forEach((t) => txMap.set(t.transaction_id, t));
+
     const unsubTx = onSnapshot(collection(transactionsCol().firestore, 'transactions'), (snap) => {
+      snap.forEach((doc) => {
+        const t = { ...doc.data(), id: doc.id } as Transaction;
+        txMap.set(t.transaction_id, t);
+      });
+      const allTx = Array.from(txMap.values());
       let blocked = 0;
       const nodes: { id: string; risk: string; amount: number }[] = [];
-      snap.forEach(doc => {
-        const tx = doc.data() as Transaction;
+      allTx.forEach(tx => {
         let risk = 'LOW';
         if (tx.status === 'BLOCK_AND_REVIEW' || tx.status === 'BLOCKED') {
           blocked++;
@@ -304,9 +312,9 @@ export const CommandCenter: React.FC = () => {
         } else if (tx.status === 'STEP_UP_VERIFICATION') {
           risk = 'MEDIUM';
         }
-        nodes.push({ id: doc.id, risk, amount: tx.amount });
+        nodes.push({ id: tx.transaction_id, risk, amount: tx.amount });
       });
-      setStats(s => ({ ...s, totalTx: snap.size, blockedTx: blocked }));
+      setStats(s => ({ ...s, totalTx: allTx.length, blockedTx: blocked }));
       setNetworkNodes(nodes.slice(0, 48));
     });
 

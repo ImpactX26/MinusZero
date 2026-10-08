@@ -197,13 +197,13 @@ export const Settings: React.FC = () => {
           </div>
           <div>
             <div className="text-[var(--text-muted)] text-[11px] mb-1">Environment</div>
-            <div className="font-semibold text-[var(--text-primary)]">Demo Prototype</div>
-            <div className="text-[var(--text-secondary)] text-[11px]">Phase 2 Foundation</div>
+            <div className="font-semibold text-[var(--text-primary)]">Demo Sandbox</div>
+            <div className="text-[var(--text-secondary)] text-[11px]">Synthetic Data Mode</div>
           </div>
           <div>
             <div className="text-[var(--text-muted)] text-[11px] mb-1">Specification</div>
-            <div className="font-semibold text-[var(--text-primary)]">V3 Master Architecture</div>
-            <div className="text-[var(--text-secondary)] text-[11px]">Hackathon Edition</div>
+            <div className="font-semibold text-[var(--text-primary)]">Multi-Agent Risk Architecture</div>
+            <div className="text-[var(--text-secondary)] text-[11px]">Institutional Prototype</div>
           </div>
         </div>
       </Card>

@@ -33,7 +33,8 @@ export function runTransactionAgent(_input: RiskEvaluationInput, riskResult: Ris
       category: 'TRANSACTION',
       title: signal.title,
       description: signal.reason,
-      severity: 'high'
+      severity: 'high',
+      value: signal.value !== undefined ? signal.value : signal.reason
     });
     
     findings.push(createFinding(
@@ -72,7 +73,8 @@ export function runBehaviourAgent(_input: RiskEvaluationInput, riskResult: RiskA
       category: 'BEHAVIOUR',
       title: signal.title,
       description: signal.reason,
-      severity: 'medium'
+      severity: 'medium',
+      value: signal.value !== undefined ? signal.value : signal.reason
     });
     
     findings.push(createFinding(
@@ -111,7 +113,8 @@ export function runDeviceAgent(_input: RiskEvaluationInput, riskResult: RiskAsse
       category: 'DEVICE',
       title: signal.title,
       description: signal.reason,
-      severity: 'high'
+      severity: 'high',
+      value: signal.value !== undefined ? signal.value : signal.reason
     });
     
     findings.push(createFinding(
@@ -150,7 +153,8 @@ export function runIdentityAgent(_input: RiskEvaluationInput, riskResult: RiskAs
       category: 'IDENTITY',
       title: signal.title,
       description: signal.reason,
-      severity: 'high'
+      severity: 'high',
+      value: signal.value !== undefined ? signal.value : signal.reason
     });
     
     findings.push(createFinding(
@@ -191,7 +195,8 @@ export function runLocationAgent(_input: RiskEvaluationInput, riskResult: RiskAs
       category: 'LOCATION',
       title: signal.title,
       description: signal.reason,
-      severity: signal.pointsContribution > 10 ? 'high' : 'medium'
+      severity: signal.pointsContribution > 10 ? 'high' : 'medium',
+      value: signal.value !== undefined ? signal.value : signal.reason
     });
     
     findings.push(createFinding(
@@ -230,7 +235,8 @@ export function runNetworkAgent(_input: RiskEvaluationInput, riskResult: RiskAss
       category: 'NETWORK',
       title: signal.title,
       description: signal.reason,
-      severity: 'high'
+      severity: 'high',
+      value: signal.value !== undefined ? signal.value : signal.reason
     });
     
     findings.push(createFinding(

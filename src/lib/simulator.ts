@@ -27,7 +27,7 @@ export const SCENARIO_META: Record<
   }
 > = {
   legitimate: {
-    transactionId: 'TX-2026-001',
+    transactionId: CANONICAL_SCENARIOS.legitimate.transaction.transaction_id || 'TXN-SEED-C1001-NORM',
     scenarioName: 'Scenario A — Legitimate Normal Transaction',
     formattedAmount: '₹1,500',
     location: 'Bengaluru',
@@ -35,7 +35,7 @@ export const SCENARIO_META: Record<
     loginSignalsSummary: 'Consistent biometric login telemetry',
   },
   suspicious: {
-    transactionId: 'TX-2026-002',
+    transactionId: CANONICAL_SCENARIOS.suspicious.transaction.transaction_id || 'TXN-SEED-C1002-SUSP',
     scenarioName: 'Scenario B — Suspicious Deviation',
     formattedAmount: '₹25,000',
     location: 'Delhi',
@@ -43,7 +43,7 @@ export const SCENARIO_META: Record<
     loginSignalsSummary: 'Late-night login (23:12) from unverified desktop',
   },
   high_risk_c1003: {
-    transactionId: 'TX-2026-003',
+    transactionId: CANONICAL_SCENARIOS.high_risk_c1003.transaction.transaction_id || 'TXN-SEED-C1003-FRAUD',
     scenarioName: 'Scenario C — Coordinated Account Takeover',
     formattedAmount: '₹85,000',
     location: 'Bengaluru → Mumbai',
@@ -51,7 +51,7 @@ export const SCENARIO_META: Record<
     loginSignalsSummary: '3 failed logins',
   },
   scenario_d_traveller: {
-    transactionId: 'TX-2026-004',
+    transactionId: CANONICAL_SCENARIOS.scenario_d_traveller.transaction.transaction_id || 'TXN-SEED-C1004-TRAVEL',
     scenarioName: 'Scenario D — Legitimate Frequent Traveller',
     formattedAmount: '₹18,500',
     location: 'Bengaluru → Mumbai Airport',
@@ -59,7 +59,7 @@ export const SCENARIO_META: Record<
     loginSignalsSummary: 'Known device connected via Airport Wi-Fi',
   },
   scenario_e_fraud_ring: {
-    transactionId: 'TX-2026-005',
+    transactionId: CANONICAL_SCENARIOS.scenario_e_fraud_ring.transaction.transaction_id || 'TXN-SEED-C1015-RING',
     scenarioName: 'Scenario E — Coordinated Fraud Ring Cluster',
     formattedAmount: '₹49,500',
     location: 'Pune',
@@ -67,7 +67,7 @@ export const SCENARIO_META: Record<
     loginSignalsSummary: 'Single proxy IP shared across 4 flagged accounts',
   },
   scenario_f_prompt_injection: {
-    transactionId: 'TX-2026-006',
+    transactionId: CANONICAL_SCENARIOS.scenario_f_prompt_injection.transaction.transaction_id || 'TXN-SEED-C1020-INJECT',
     scenarioName: 'Scenario F — Prompt Injection / Untrusted Text',
     formattedAmount: '₹7,500',
     location: 'Bengaluru',
@@ -190,7 +190,7 @@ export async function simulateScenario(scenarioId: ScenarioId): Promise<Simulati
     device_label: meta.deviceLabel,
     login_signals_summary: meta.loginSignalsSummary,
     status: 'PENDING INVESTIGATION',
-    next_stage: 'Risk Engine — Phase 3',
+    next_stage: 'Autonomous Investigation Pipeline',
     risk_assessment: riskAssessment,
   };
 }

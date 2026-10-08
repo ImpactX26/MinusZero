@@ -290,6 +290,8 @@ export const Cases: React.FC = () => {
                             <span className="italic">"{String(log.details.note)}"</span>
                           ) : log.details.newStatus ? (
                             <span>Status changed to <strong>{String(log.details.newStatus)}</strong></span>
+                          ) : log.details.action ? (
+                            <span>Determination applied: <strong>{String(log.details.action)}</strong></span>
                           ) : (
                             <span className="font-mono text-[10px]">{JSON.stringify(log.details)}</span>
                           )}

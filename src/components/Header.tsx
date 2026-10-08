@@ -24,8 +24,8 @@ export const Header: React.FC = () => {
               <span className="text-sm font-bold tracking-tight text-white" style={{ letterSpacing: '-0.01em' }}>
                 FinGuard<span className="text-[#38BDF8]"> AI</span>
               </span>
-              <span className="badge" style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)', color: '#38BDF8' }}>
-                v0.2 · Phase 2
+              <span className="badge" style={{ background: 'rgba(49,87,213,0.08)', border: '1px solid rgba(49,87,213,0.2)', color: '#3157D5' }}>
+                Demo Environment
               </span>
             </div>
             <p className="terminal-text text-[#506080]">Banking Fraud-Investigation Platform</p>

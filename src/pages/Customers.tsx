@@ -612,7 +612,7 @@ export const Customers: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-[#C43D4B]" />
                     <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] font-mono">
-                      Scenario C Target: Coordinated Account Takeover (ATO)
+                      Scenario C: Coordinated Account Takeover (ATO)
                     </span>
                   </div>
                   <p className="text-xs text-[var(--text-secondary)] max-w-2xl leading-relaxed">
