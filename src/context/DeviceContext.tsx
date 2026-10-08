@@ -5,6 +5,7 @@ import { auth } from '../firebase/config';
 import { devicesCol } from '../firebase/collections';
 import { Device, DeviceType, DeviceRole, BankId, ConnectionStatus } from '../types';
 import { DEMO_IDENTITIES } from '../data/phoneFixtures';
+import { generateUUID } from '../utils/uuid';
 
 function inferDeviceType(): DeviceType {
   const ua = navigator.userAgent.toLowerCase();
@@ -67,7 +68,7 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [deviceId] = useState<string>(() => {
     let stored = localStorage.getItem('finguard_device_id');
     if (!stored) {
-      stored = crypto.randomUUID();
+      stored = generateUUID();
       localStorage.setItem('finguard_device_id', stored);
     }
     return stored;
@@ -77,7 +78,7 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [sessionId] = useState<string>(() => {
     let stored = sessionStorage.getItem('finguard_session_id');
     if (!stored) {
-      stored = crypto.randomUUID();
+      stored = generateUUID();
       sessionStorage.setItem('finguard_session_id', stored);
     }
     return stored;

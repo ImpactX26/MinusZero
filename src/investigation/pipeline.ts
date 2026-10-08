@@ -23,6 +23,7 @@ import {
   AgentResult,
   Case,
 } from '../types';
+import { generateUUID } from '../utils/uuid';
 import {
   runTransactionAgent,
   runBehaviourAgent,
@@ -67,7 +68,7 @@ export async function runInvestigationPipeline(scenarioId: ScenarioId): Promise<
   // 1. Run deterministic risk engine
   const riskResult = evaluateTransactionRisk(input);
 
-  const caseId = `CASE-${crypto.randomUUID().split('-')[0].toUpperCase()}`;
+  const caseId = `CASE-${generateUUID().split('-')[0].toUpperCase()}`;
   const startedAt = new Date().toISOString();
 
   // 2. Run Agents sequentially
@@ -102,7 +103,7 @@ export async function runInvestigationPipeline(scenarioId: ScenarioId): Promise<
 
   // 3. Save Agent Logs
   const logPromises = agentResults.map(res => {
-    const logId = crypto.randomUUID();
+    const logId = generateUUID();
     const logRef = doc(agentLogsCol(), logId);
     const agentLog: AgentLog = {
       log_id: logId,
@@ -122,7 +123,7 @@ export async function runInvestigationPipeline(scenarioId: ScenarioId): Promise<
   await Promise.all(logPromises);
 
   // 4. Save Investigation
-  const investigationId = crypto.randomUUID();
+  const investigationId = generateUUID();
   const investigationRef = doc(investigationsCol(), investigationId);
   
   const investigation: Investigation = {
@@ -261,7 +262,7 @@ export async function runInvestigationForTransaction(
 
   // 3. Persist Agent Logs to Firestore
   const logPromises = agentResults.map((res) => {
-    const logId = crypto.randomUUID();
+    const logId = generateUUID();
     const logRef = doc(agentLogsCol(), logId);
     const agentLog: AgentLog = {
       log_id: logId,

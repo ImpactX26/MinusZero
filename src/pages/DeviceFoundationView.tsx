@@ -1139,7 +1139,11 @@ export const DeviceFoundationView: React.FC = () => {
 
     // Verify browser platform authenticator support
     if (
+      typeof window !== 'undefined' &&
       window.PublicKeyCredential &&
+      typeof navigator !== 'undefined' &&
+      navigator.credentials &&
+      typeof navigator.credentials.get === 'function' &&
       (await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.().catch(() => false))
     ) {
       try {

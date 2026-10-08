@@ -1,5 +1,6 @@
 import { RiskEvaluationInput, RiskAssessmentResult } from '../risk/riskEngine';
 import { AgentResult, Finding, EvidenceItem } from '../types';
+import { generateUUID } from '../utils/uuid';
 
 
 const createFinding = (
@@ -10,7 +11,7 @@ const createFinding = (
   direction: Finding['direction'],
   claims: Finding['claims']
 ): Finding => ({
-  findingId: crypto.randomUUID(),
+  findingId: generateUUID(),
   agent,
   category,
   title,
@@ -26,7 +27,7 @@ export function runTransactionAgent(_input: RiskEvaluationInput, riskResult: Ris
   const evidenceItems: EvidenceItem[] = [];
   
   if (signal) {
-    const evidenceId = crypto.randomUUID();
+    const evidenceId = generateUUID();
     evidenceItems.push({
       id: evidenceId,
       source: 'TransactionHistory',
@@ -66,7 +67,7 @@ export function runBehaviourAgent(_input: RiskEvaluationInput, riskResult: RiskA
   const evidenceItems: EvidenceItem[] = [];
   
   if (signal) {
-    const evidenceId = crypto.randomUUID();
+    const evidenceId = generateUUID();
     evidenceItems.push({
       id: evidenceId,
       source: 'CustomerProfile',
@@ -106,7 +107,7 @@ export function runDeviceAgent(_input: RiskEvaluationInput, riskResult: RiskAsse
   const evidenceItems: EvidenceItem[] = [];
   
   if (signal) {
-    const evidenceId = crypto.randomUUID();
+    const evidenceId = generateUUID();
     evidenceItems.push({
       id: evidenceId,
       source: 'DeviceTelemetry',
@@ -146,7 +147,7 @@ export function runIdentityAgent(_input: RiskEvaluationInput, riskResult: RiskAs
   const evidenceItems: EvidenceItem[] = [];
   
   if (signal) {
-    const evidenceId = crypto.randomUUID();
+    const evidenceId = generateUUID();
     evidenceItems.push({
       id: evidenceId,
       source: 'LoginLedger',
@@ -188,7 +189,7 @@ export function runLocationAgent(_input: RiskEvaluationInput, riskResult: RiskAs
   
   signals.forEach(signal => {
     riskContrib += signal.pointsContribution;
-    const evidenceId = crypto.randomUUID();
+    const evidenceId = generateUUID();
     evidenceItems.push({
       id: evidenceId,
       source: 'GeoVelocity',
@@ -228,7 +229,7 @@ export function runNetworkAgent(_input: RiskEvaluationInput, riskResult: RiskAss
   const evidenceItems: EvidenceItem[] = [];
   
   if (signal) {
-    const evidenceId = crypto.randomUUID();
+    const evidenceId = generateUUID();
     evidenceItems.push({
       id: evidenceId,
       source: 'NetworkTelemetry',
