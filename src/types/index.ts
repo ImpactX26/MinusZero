@@ -503,6 +503,7 @@ export interface SimulationResult {
   login_signals_summary: string;
   status: string;
   next_stage: string;
+  risk_assessment?: any;
 }
 
 export interface Decision {

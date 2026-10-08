@@ -10,6 +10,7 @@ import {
   LoginEvent,
 } from '../types';
 import { CANONICAL_SCENARIOS } from '../data/scenarios';
+import { evaluateScenarioRisk } from '../risk/riskService';
 
 // ==========================================
 // Scenario Presentation Metadata Table
@@ -173,6 +174,9 @@ export async function simulateScenario(scenarioId: ScenarioId): Promise<Simulati
     device_type: 'mobile',
   };
 
+  // Deterministic risk engine evaluation (Phase 3 pure engine)
+  const riskAssessment = evaluateScenarioRisk(scenarioId);
+
   return {
     scenario_id: scenarioId,
     scenario_name: meta.scenarioName,
@@ -187,5 +191,6 @@ export async function simulateScenario(scenarioId: ScenarioId): Promise<Simulati
     login_signals_summary: meta.loginSignalsSummary,
     status: 'PENDING INVESTIGATION',
     next_stage: 'Risk Engine — Phase 3',
+    risk_assessment: riskAssessment,
   };
 }

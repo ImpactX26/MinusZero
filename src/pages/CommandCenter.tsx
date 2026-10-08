@@ -40,6 +40,12 @@ const riskConfig = {
     borderColor: 'border-amber-300 dark:border-amber-800/40',
     bgColor: 'bg-amber-50 dark:bg-amber-950/20',
   },
+  HIGH: {
+    label: 'HIGH RISK',
+    color: 'text-orange-700 dark:text-orange-400',
+    borderColor: 'border-orange-300 dark:border-orange-800/40',
+    bgColor: 'bg-orange-50 dark:bg-orange-950/20',
+  },
   CRITICAL: {
     label: 'CRITICAL',
     color: 'text-rose-700 dark:text-rose-400',
@@ -310,6 +316,164 @@ const SimulationResultPanel: React.FC<{ result: SimulationResult }> = ({ result 
         </span>
       </div>
     </div>
+
+    {/* Phase 3 Deterministic Risk Engine Assessment */}
+    {result.risk_assessment && (
+      <div className="mt-4 pt-4 border-t border-[var(--border-subtle)] space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="terminal-text text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+              Deterministic Risk Assessment
+            </span>
+            <span className="terminal-text text-[10px] text-[var(--text-muted)] bg-[var(--bg-surface-subtle)] px-2 py-0.5 rounded border border-[var(--border-subtle)]">
+              Pure Rule Engine (No AI / LLM)
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="terminal-text text-xs text-[var(--text-muted)]">Calculated:</span>
+            <span className="terminal-text text-xs font-mono text-[var(--text-secondary)]">
+              {new Date(result.risk_assessment.calculatedAt).toLocaleTimeString()}
+            </span>
+          </div>
+        </div>
+
+        {/* Metric Highlights */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Score */}
+          <div className="rounded-lg p-3.5 bg-[var(--bg-surface)] border border-[var(--border-default)] flex flex-col justify-between">
+            <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
+              <span className="terminal-text uppercase text-[10px]">Deterministic Score</span>
+              <span className="terminal-text text-[10px]">Max 100</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black font-mono text-[var(--text-primary)] stat-value">
+                {result.risk_assessment.riskScore}
+              </span>
+              <span className="text-xs text-[var(--text-muted)] font-mono">/ 100</span>
+            </div>
+            {/* Visual Progress Bar */}
+            <div className="w-full bg-[var(--bg-surface-subtle)] h-2 rounded-full overflow-hidden mt-2 border border-[var(--border-subtle)]">
+              <div
+                className={`h-full transition-all duration-300 ${
+                  result.risk_assessment.riskScore <= 30
+                    ? 'bg-emerald-500'
+                    : result.risk_assessment.riskScore <= 70
+                    ? 'bg-amber-500'
+                    : result.risk_assessment.riskScore <= 90
+                    ? 'bg-orange-500'
+                    : 'bg-rose-500'
+                }`}
+                style={{ width: `${Math.min(100, Math.max(4, result.risk_assessment.riskScore))}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Risk Band */}
+          <div className="rounded-lg p-3.5 bg-[var(--bg-surface)] border border-[var(--border-default)] flex flex-col justify-between">
+            <div className="text-xs text-[var(--text-muted)] mb-1">
+              <span className="terminal-text uppercase text-[10px]">Risk Band</span>
+            </div>
+            <div>
+              <span
+                className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold font-mono border ${
+                  riskConfig[result.risk_assessment.riskLevel as keyof typeof riskConfig]?.color || 'text-slate-600'
+                } ${
+                  riskConfig[result.risk_assessment.riskLevel as keyof typeof riskConfig]?.bgColor || 'bg-slate-100'
+                } ${
+                  riskConfig[result.risk_assessment.riskLevel as keyof typeof riskConfig]?.borderColor || 'border-slate-300'
+                }`}
+              >
+                {result.risk_assessment.riskLevel}
+              </span>
+              <span className="block text-[11px] text-[var(--text-muted)] mt-1 font-mono">
+                {result.risk_assessment.riskLevel === 'LOW' && '0–30 (Normal baseline)'}
+                {result.risk_assessment.riskLevel === 'MEDIUM' && '31–70 (Step-up required)'}
+                {result.risk_assessment.riskLevel === 'HIGH' && '71–90 (Block & review)'}
+                {result.risk_assessment.riskLevel === 'CRITICAL' && '91–100 (Block & case)'}
+              </span>
+            </div>
+          </div>
+
+          {/* Decision */}
+          <div className="rounded-lg p-3.5 bg-[var(--bg-surface)] border border-[var(--border-default)] flex flex-col justify-between">
+            <div className="text-xs text-[var(--text-muted)] mb-1">
+              <span className="terminal-text uppercase text-[10px]">Engine Decision</span>
+            </div>
+            <div>
+              <span className="text-sm font-bold font-mono text-[var(--text-primary)] block">
+                {result.risk_assessment.decision.replace(/_/g, ' ')}
+              </span>
+              <span className="text-[11px] text-[var(--text-secondary)] mt-0.5 block">
+                {result.risk_assessment.decision === 'ALLOW' && 'Transaction cleared without disruption'}
+                {result.risk_assessment.decision === 'STEP_UP_VERIFICATION' && 'MFA / Step-up challenge required'}
+                {result.risk_assessment.decision === 'BLOCK_AND_REVIEW' && 'Payment halted; pending analyst review'}
+                {result.risk_assessment.decision === 'BLOCK_AND_CREATE_CASE' && 'Transaction blocked; fraud case dispatched'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Signals and Breakdown */}
+        <div className="rounded-lg p-3.5 bg-[var(--bg-surface)] border border-[var(--border-default)]">
+          <div className="flex items-center justify-between mb-2">
+            <span className="terminal-text text-[11px] font-bold text-[var(--text-primary)] uppercase">
+              Triggered Risk Signals ({result.risk_assessment.triggeredSignals.length})
+            </span>
+            <span className="terminal-text text-[10px] text-[var(--text-muted)]">
+              V3 Mathematical Weights
+            </span>
+          </div>
+
+          {result.risk_assessment.triggeredSignals.length === 0 ? (
+            <div className="p-3 rounded bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-700 dark:text-emerald-400 font-mono">
+              ✓ No elevated risk signals detected. Clean transaction baseline (Score: 0 / 100).
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {result.risk_assessment.scoreBreakdown
+                .filter((item: any) => item.triggered)
+                .map((item: any) => (
+                  <div
+                    key={item.signal}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 rounded bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-xs gap-1.5"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="badge font-mono font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[11px]">
+                        +{item.weight}
+                      </span>
+                      <span className="font-semibold text-[var(--text-primary)]">
+                        {item.signalName}
+                      </span>
+                      {item.reasonCode && (
+                        <span className="font-mono text-[10px] text-[var(--text-muted)] bg-[var(--bg-surface)] px-1.5 py-0.5 rounded border border-[var(--border-subtle)]">
+                          {item.reasonCode}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[var(--text-secondary)] text-[11px] font-mono sm:text-right">
+                      {item.reason}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* Isolation Principle & Counterfactual Notice */}
+          <div className="mt-3 pt-2.5 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[11px] text-[var(--text-muted)]">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500" />
+              <span><strong>Isolation Principle:</strong> City / IP change alone ≠ fraud (Weight ≤ 20 &lt; 31 LOW threshold)</span>
+            </div>
+            {result.risk_assessment.counterfactual && (
+              <div className="font-mono text-[var(--accent)] font-medium">
+                {result.risk_assessment.counterfactual}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
   </div>
 );
 

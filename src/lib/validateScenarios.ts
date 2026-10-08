@@ -1,4 +1,5 @@
-import { CANONICAL_SCENARIOS, SYNTHETIC_CUSTOMERS } from '../data/scenarios';
+import { CANONICAL_SCENARIOS } from '../data/scenarios';
+import { evaluateScenarioRisk } from '../risk/riskService';
 
 export interface ValidationCheckResult {
   scenarioId: string;
@@ -23,6 +24,7 @@ export function validateAllScenarios(): {
   // 1. Verify Scenario A: Legitimate
   const leg = CANONICAL_SCENARIOS.legitimate;
   const legPrimaryDevice = leg.devices.find((d) => d.device_id === leg.transaction.device_id);
+  const legRisk = evaluateScenarioRisk('legitimate');
   const legChecks = [
     {
       name: 'Expected Risk Level == LOW',
@@ -35,6 +37,12 @@ export function validateAllScenarios(): {
       expected: 'ALLOW',
       actual: leg.expected_decision,
       passed: leg.expected_decision === 'ALLOW',
+    },
+    {
+      name: 'Deterministic Risk Engine (LOW / ALLOW)',
+      expected: 'LOW / ALLOW',
+      actual: `${legRisk.riskLevel} / ${legRisk.decision}`,
+      passed: legRisk.riskLevel === 'LOW' && legRisk.decision === 'ALLOW',
     },
     {
       name: 'Amount == 1500',
@@ -72,6 +80,7 @@ export function validateAllScenarios(): {
   // 2. Verify Scenario B: Suspicious
   const sus = CANONICAL_SCENARIOS.suspicious;
   const susPrimaryDevice = sus.devices.find((d) => d.device_id === sus.transaction.device_id);
+  const susRisk = evaluateScenarioRisk('suspicious');
   const susChecks = [
     {
       name: 'Expected Risk Level == MEDIUM',
@@ -84,6 +93,12 @@ export function validateAllScenarios(): {
       expected: 'STEP_UP_VERIFICATION',
       actual: sus.expected_decision,
       passed: sus.expected_decision === 'STEP_UP_VERIFICATION',
+    },
+    {
+      name: 'Deterministic Risk Engine (MEDIUM / STEP_UP_VERIFICATION)',
+      expected: 'MEDIUM / STEP_UP_VERIFICATION',
+      actual: `${susRisk.riskLevel} / ${susRisk.decision}`,
+      passed: susRisk.riskLevel === 'MEDIUM' && susRisk.decision === 'STEP_UP_VERIFICATION',
     },
     {
       name: 'Amount == 25000',
@@ -122,12 +137,13 @@ export function validateAllScenarios(): {
   const fraud = CANONICAL_SCENARIOS.high_risk_c1003;
   const fraudPrimaryDevice = fraud.devices.find((d) => d.device_id === fraud.transaction.device_id);
   const failedLogins = fraud.login_events.filter((l) => !l.success);
+  const fraudRisk = evaluateScenarioRisk('high_risk_c1003');
   const fraudChecks = [
     {
       name: 'Customer ID == C1003',
       expected: 'C1003',
       actual: fraud.customer_id,
-      passed: fraud.customer_id === 'C1003' && SYNTHETIC_CUSTOMERS.C1003 !== undefined,
+      passed: fraud.customer_id === 'C1003' && fraud.customer !== undefined,
     },
     {
       name: 'Expected Risk Level == CRITICAL',
@@ -140,6 +156,12 @@ export function validateAllScenarios(): {
       expected: 'BLOCK_AND_CREATE_CASE',
       actual: fraud.expected_decision,
       passed: fraud.expected_decision === 'BLOCK_AND_CREATE_CASE',
+    },
+    {
+      name: 'Deterministic Risk Engine (CRITICAL / BLOCK_AND_CREATE_CASE)',
+      expected: 'CRITICAL / BLOCK_AND_CREATE_CASE',
+      actual: `${fraudRisk.riskLevel} / ${fraudRisk.decision}`,
+      passed: fraudRisk.riskLevel === 'CRITICAL' && fraudRisk.decision === 'BLOCK_AND_CREATE_CASE',
     },
     {
       name: 'Amount == 85000',
@@ -189,6 +211,7 @@ export function validateAllScenarios(): {
   // 4. Verify Scenario D: Legitimate Traveller
   const trav = CANONICAL_SCENARIOS.scenario_d_traveller;
   const travDevice = trav.devices.find((d) => d.device_id === trav.transaction.device_id);
+  const travRisk = evaluateScenarioRisk('scenario_d_traveller');
   const travChecks = [
     {
       name: 'Customer ID == C1004',
@@ -207,6 +230,12 @@ export function validateAllScenarios(): {
       expected: 'ALLOW',
       actual: trav.expected_decision,
       passed: trav.expected_decision === 'ALLOW',
+    },
+    {
+      name: 'Deterministic Risk Engine (LOW / ALLOW — Isolation Principle)',
+      expected: 'LOW / ALLOW',
+      actual: `${travRisk.riskLevel} / ${travRisk.decision}`,
+      passed: travRisk.riskLevel === 'LOW' && travRisk.decision === 'ALLOW',
     },
     {
       name: 'Amount == 18500',
@@ -231,6 +260,7 @@ export function validateAllScenarios(): {
 
   // 5. Verify Scenario E: Fraud Ring
   const ring = CANONICAL_SCENARIOS.scenario_e_fraud_ring;
+  const ringRisk = evaluateScenarioRisk('scenario_e_fraud_ring');
   const ringChecks = [
     {
       name: 'Customer ID == C1015',
@@ -251,6 +281,12 @@ export function validateAllScenarios(): {
       passed: ring.expected_decision === 'BLOCK_AND_CREATE_CASE',
     },
     {
+      name: 'Deterministic Risk Engine (CRITICAL / BLOCK_AND_CREATE_CASE)',
+      expected: 'CRITICAL / BLOCK_AND_CREATE_CASE',
+      actual: `${ringRisk.riskLevel} / ${ringRisk.decision}`,
+      passed: ringRisk.riskLevel === 'CRITICAL' && ringRisk.decision === 'BLOCK_AND_CREATE_CASE',
+    },
+    {
       name: 'Shared Emulator Device ID == DEV-RING-DEVICE-01',
       expected: 'DEV-RING-DEVICE-01',
       actual: ring.transaction.device_id,
@@ -267,6 +303,7 @@ export function validateAllScenarios(): {
 
   // 6. Verify Scenario F: Prompt Injection Test
   const inj = CANONICAL_SCENARIOS.scenario_f_prompt_injection;
+  const injRisk = evaluateScenarioRisk('scenario_f_prompt_injection');
   const injChecks = [
     {
       name: 'Customer ID == C1020',
@@ -279,6 +316,12 @@ export function validateAllScenarios(): {
       expected: 'LOW',
       actual: inj.expected_risk_level,
       passed: inj.expected_risk_level === 'LOW',
+    },
+    {
+      name: 'Deterministic Risk Engine (LOW / ALLOW — Injection Immune)',
+      expected: 'LOW / ALLOW',
+      actual: `${injRisk.riskLevel} / ${injRisk.decision}`,
+      passed: injRisk.riskLevel === 'LOW' && injRisk.decision === 'ALLOW',
     },
     {
       name: 'Contains Adversarial Text in Beneficiary',
