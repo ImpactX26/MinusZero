@@ -1,4 +1,5 @@
 import React from 'react';
+import { DeviceProvider } from './context/DeviceContext';
 import { useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './context/ThemeContext';
 import { AppShell } from './components/layout/AppShell';
@@ -6,7 +7,17 @@ import { LandingPage } from './pages/LandingPage';
 import { Shield, Loader2 } from 'lucide-react';
 
 const AppContent: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, signInAnonymously } = useAuth();
+
+  // Seamless authentication entry for direct device and SOC routes
+  React.useEffect(() => {
+    const rawHash = window.location.hash.toLowerCase();
+    if (!loading && !user && (rawHash.includes('device') || rawHash.includes('soc'))) {
+      signInAnonymously().catch((err) => {
+        console.warn('[FinGuard App] Auto anonymous auth error:', err);
+      });
+    }
+  }, [loading, user, signInAnonymously]);
 
   // Loading state while Firebase auth initializes
   if (loading) {
@@ -31,14 +42,17 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Gate: Unauthenticated users are shown LandingPage, authenticated users enter AppShell
-  return !user ? <LandingPage /> : <AppShell />;
+  // Gate: Unauthenticated users are shown LandingPage unless accessing #/device mobile banking route
+  const isDeviceRoute = window.location.hash.toLowerCase().includes('device');
+  return (!user && !isDeviceRoute) ? <LandingPage /> : <AppShell />;
 };
 
 export const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <AppContent />
+      <DeviceProvider>
+        <AppContent />
+      </DeviceProvider>
     </ThemeProvider>
   );
 };

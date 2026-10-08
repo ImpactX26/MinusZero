@@ -38,7 +38,8 @@ export type PermittedCollection =
   | 'case_notes'
   | 'feedback'
   | 'audit_logs'
-  | 'scenario_runs';
+  | 'scenario_runs'
+  | 'notifications';
 
 export const PERMITTED_COLLECTIONS: readonly PermittedCollection[] = [
   'customers',
@@ -57,6 +58,7 @@ export const PERMITTED_COLLECTIONS: readonly PermittedCollection[] = [
   'feedback',
   'audit_logs',
   'scenario_runs',
+  'notifications',
 ] as const;
 
 // ==========================================
@@ -104,6 +106,9 @@ export interface Account {
   opened_at: string;
   daily_limit: number;
   last_activity_at: string;
+  // Phase 2.5B Configurable Limits
+  max_transaction_limit?: number;
+  caution_threshold?: number;
 }
 
 // ==========================================
@@ -114,7 +119,14 @@ export type TransactionStatus =
   | 'ALLOWED'
   | 'STEP_UP_VERIFICATION'
   | 'BLOCK_AND_REVIEW'
-  | 'BLOCKED';
+  | 'BLOCKED'
+  | 'INITIATED'
+  | 'APPROVAL_REQUIRED'
+  | 'APPROVED'
+  | 'COMPLETED'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'EXPIRED';
 
 export type TransactionType = 'UPI' | 'CARD' | 'NET_BANKING' | 'IMPS' | 'NEFT';
 
@@ -137,12 +149,36 @@ export interface Transaction {
   status: TransactionStatus;
   channel?: 'MOBILE_APP' | 'WEB_PORTAL' | 'POS' | 'API';
   notes?: string;
+  // Phase 2.5B Limit Snapshot & Approval Metadata
+  caution_threshold?: number;
+  fixed_limit?: number;
+  approval_status?: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  approval_method?: 'BIOMETRIC' | 'PASSWORD' | 'PIN';
+  approved_at?: string;
+  blocked_reason?: string;
 }
 
 // ==========================================
 // 6. Device Domain Model
 // ==========================================
 export type DeviceType = 'mobile' | 'desktop' | 'tablet';
+export type DeviceRole = 'SOC' | 'CUSTOMER' | 'ATTACKER';
+export type BankId = 'ALPHA' | 'NOVA' | 'HORIZON';
+export type ConnectionStatus = 'CONNECTING' | 'ONLINE' | 'OFFLINE';
+
+export interface DeviceSession {
+  deviceId: string;
+  sessionId: string;
+  role: DeviceRole;
+  bank: BankId | null;
+  status: ConnectionStatus;
+  connectedAt: string;
+  lastSeen: string;
+  deviceType: DeviceType;
+  customerId?: string | null;
+  accountId?: string | null;
+  firebaseUid?: string | null;
+}
 
 export interface Device {
   device_id: string;
@@ -159,6 +195,16 @@ export interface Device {
   is_root_or_emulator?: boolean;
   is_remote_access?: boolean;
   shared_with_customer_ids?: string[];
+  // Phase 1 session foundation fields
+  sessionId?: string;
+  role?: DeviceRole;
+  bank?: BankId | null;
+  status?: ConnectionStatus;
+  connectedAt?: string;
+  lastSeen?: string;
+  customerId?: string | null;
+  accountId?: string | null;
+  firebaseUid?: string | null;
 }
 
 // ==========================================
@@ -445,7 +491,7 @@ export interface Feedback {
 
 export interface AuditLog {
   id: string;
-  actor: 'SYSTEM' | 'AI' | 'INVESTIGATOR';
+  actor: 'SYSTEM' | 'AI' | 'INVESTIGATOR' | 'USER';
   actorId?: string;
   action: string; // e.g. "CASE_CREATED", "SIMULATED_BLOCK", "INVESTIGATION_COMPLETED", "FEEDBACK_SUBMITTED"
   objectType: 'CASE' | 'TRANSACTION' | 'INVESTIGATION' | 'ACCOUNT';
@@ -515,3 +561,40 @@ export interface Decision {
   action: DecisionAction;
   case_required: boolean;
 }
+
+// ==========================================
+// 20. Phase 2.6 Mobile Notifications Domain Model
+// ==========================================
+export type NotificationEventType =
+  | 'PAYMENT_INITIATED'
+  | 'APPROVAL_REQUIRED'
+  | 'PAYMENT_APPROVED'
+  | 'PAYMENT_COMPLETED'
+  | 'PAYMENT_BLOCKED'
+  | 'PAYMENT_REJECTED'
+  | 'LIMIT_CHANGED';
+
+export type AppLanguage = 'en' | 'kn';
+
+export interface PhoneNotification {
+  notification_id: string;
+  id?: string;
+  event_type: NotificationEventType;
+  customer_id: string;
+  account_id: string;
+  device_id: string;
+  transaction_id?: string;
+  auth_uid?: string;
+  title: string;
+  message: string;
+  language: AppLanguage;
+  read: boolean;
+  action_required: boolean;
+  created_at: string;
+  amount?: number;
+  merchant?: string;
+  caution_threshold?: number;
+  fixed_limit?: number;
+  sms_text?: string;
+}
+

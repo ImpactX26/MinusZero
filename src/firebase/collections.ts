@@ -34,3 +34,7 @@ export const caseNotesCol = () => getPermittedCollection('case_notes');
 export const feedbackCol = () => getPermittedCollection('feedback');
 export const auditLogsCol = () => getPermittedCollection('audit_logs');
 export const scenarioRunsCol = () => getPermittedCollection('scenario_runs');
+
+// Phase 2.6 Patch: Mobile notifications accessor backed by /notifications/{notificationId}
+export const notificationsCol = () => getPermittedCollection('notifications');
+

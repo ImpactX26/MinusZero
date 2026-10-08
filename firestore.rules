@@ -58,6 +58,43 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Phase 2.6 Patch: Notifications collection with strict customer isolation & ownership enforcement
+    match /notifications/{notificationId} {
+      // Authenticated users only. Must supply required audit fields
+      allow create: if request.auth != null
+        && request.resource.data.customer_id != null
+        && request.resource.data.account_id != null
+        && request.resource.data.device_id != null;
+
+      // Ownership enforcement:
+      // Read permitted only if caller is authenticated and notification belongs to caller's registered device/customer session or auth UID
+      allow read: if request.auth != null
+        && (
+          (exists(/databases/$(database)/documents/devices/$(request.auth.uid))
+           && get(/databases/$(database)/documents/devices/$(request.auth.uid)).data.customer_id == resource.data.customer_id)
+          || (resource.data.auth_uid != null && resource.data.auth_uid == request.auth.uid)
+          || (resource.data.device_id != null
+              && exists(/databases/$(database)/documents/devices/$(resource.data.device_id))
+              && get(/databases/$(database)/documents/devices/$(resource.data.device_id)).data.firebaseUid == request.auth.uid)
+        );
+
+      // Update permitted only on own notifications; customer_id and account_id are immutable
+      allow update: if request.auth != null
+        && (
+          (exists(/databases/$(database)/documents/devices/$(request.auth.uid))
+           && get(/databases/$(database)/documents/devices/$(request.auth.uid)).data.customer_id == resource.data.customer_id)
+          || (resource.data.auth_uid != null && resource.data.auth_uid == request.auth.uid)
+          || (resource.data.device_id != null
+              && exists(/databases/$(database)/documents/devices/$(resource.data.device_id))
+              && get(/databases/$(database)/documents/devices/$(resource.data.device_id)).data.firebaseUid == request.auth.uid)
+        )
+        && request.resource.data.customer_id == resource.data.customer_id
+        && request.resource.data.account_id == resource.data.account_id;
+
+      // Deletion strictly prohibited
+      allow delete: if false;
+    }
+
     // Deny all other collections by default
     match /{document=**} {
       allow read, write: if false;

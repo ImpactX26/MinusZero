@@ -1,696 +1,1291 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  CheckCircle2,
-  ShieldCheck,
-  MapPin,
-  Smartphone,
-  AlertCircle,
-  ChevronRight,
-  Lock,
-  RefreshCw,
+  ShieldAlert,
   Activity,
-  Network,
+  AlertTriangle,
+  Clock,
+  Smartphone,
+  Globe,
+  Search,
+  RefreshCw,
   FolderKanban,
   FileText,
-  Play
+  Building2,
+  GitMerge,
+  Layers,
+  ArrowRight,
+  Cpu,
+  Zap,
+  CreditCard,
+  User,
+  Store,
 } from 'lucide-react';
-import { ScenarioId, SimulationResult, Case, Transaction } from '../types';
-import { simulateScenario } from '../lib/simulator';
-import { SYNTHETIC_TRANSACTIONS } from '../data/scenarios';
-import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
-import { transactionsCol, casesCol } from '../firebase/collections';
-import { useTheme } from '../context/ThemeContext';
+import {
+  Transaction,
+  Customer,
+  Device,
+  Case,
+  AuditLog,
+  Investigation,
+  AgentResult,
+  RiskLevel,
+  DecisionAction,
+} from '../types';
+import {
+  transactionsCol,
+  devicesCol,
+  casesCol,
+  auditLogsCol,
+} from '../firebase/collections';
+import {
+  query,
+  orderBy,
+  onSnapshot,
+  limit,
+} from 'firebase/firestore';
+import {
+  SYNTHETIC_TRANSACTIONS,
+  SYNTHETIC_CUSTOMERS,
+  SYNTHETIC_NETWORK_SIGNALS,
+} from '../data/scenarios';
+import { DEMO_IDENTITIES } from '../data/phoneFixtures';
+import { SYNTHETIC_BANKS } from '../lib/simulationEngine';
+import {
+  evaluateTransactionContext,
+} from '../risk/riskService';
+import {
+  evaluateTransactionRisk,
+  RiskAssessmentResult,
+  RiskEvaluationInput,
+} from '../risk/riskEngine';
+import {
+  runInvestigationForTransaction,
+} from '../investigation/pipeline';
+import { AGENT_METAS } from './InvestigationWorkspace';
 
-// ─── RISK LEVEL CONFIG ────────────────────────────────────────────────────────
-const riskConfig = {
+// ─── COLOR & RISK CONFIGURATION ─────────────────────────────────────────────
+const RISK_STYLES: Record<
+  RiskLevel,
+  {
+    label: string;
+    badgeBg: string;
+    badgeText: string;
+    border: string;
+    dotBg: string;
+    accent: string;
+  }
+> = {
   LOW: {
     label: 'LOW',
-    color: 'text-[#159A75]',
-    borderColor: 'border-[#BBF7D0]',
-    bgColor: 'bg-[#F0FDF4]',
+    badgeBg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    badgeText: 'text-emerald-700 dark:text-emerald-400',
+    border: 'border-emerald-200 dark:border-emerald-800/40',
+    dotBg: 'bg-emerald-500',
+    accent: '#10B981',
   },
   MEDIUM: {
     label: 'MEDIUM',
-    color: 'text-[#D99425]',
-    borderColor: 'border-[#FEF08A]',
-    bgColor: 'bg-[#FEFCE8]',
+    badgeBg: 'bg-amber-50 dark:bg-amber-950/40',
+    badgeText: 'text-amber-700 dark:text-amber-400',
+    border: 'border-amber-200 dark:border-amber-800/40',
+    dotBg: 'bg-amber-500',
+    accent: '#F59E0B',
   },
   HIGH: {
     label: 'HIGH',
-    color: 'text-[#D95C62]',
-    borderColor: 'border-[#FED7AA]',
-    bgColor: 'bg-[#FFF7ED]',
+    badgeBg: 'bg-orange-50 dark:bg-orange-950/40',
+    badgeText: 'text-orange-700 dark:text-orange-400',
+    border: 'border-orange-200 dark:border-orange-800/40',
+    dotBg: 'bg-orange-500',
+    accent: '#F97316',
   },
   CRITICAL: {
     label: 'CRITICAL',
-    color: 'text-[#D95C62]',
-    borderColor: 'border-[#FFE4E6]',
-    bgColor: 'bg-[#FFF1F2]',
+    badgeBg: 'bg-rose-50 dark:bg-rose-950/40',
+    badgeText: 'text-rose-700 dark:text-rose-400',
+    border: 'border-rose-200 dark:border-rose-800/40',
+    dotBg: 'bg-rose-500',
+    accent: '#EF4444',
   },
 };
 
-// ─── STAT CARD (THEME-AWARE + COLORED ICON CONTAINER + ACCENT LINE) ─────────
-const StatCard: React.FC<{
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  sub?: string;
-  accentColor: string;
-  iconBg: string;
-  iconColor: string;
-  trend?: string;
-}> = ({ icon: Icon, label, value, sub, accentColor, iconBg, iconColor, trend }) => {
-  return (
-    <div className="bg-[var(--surface)] rounded-xl p-4.5 flex flex-col justify-between min-h-[110px] border border-[var(--border)] shadow-xs relative overflow-hidden transition-all hover:border-[var(--border-strong)] hover:shadow-card">
-      {/* Subtle top accent line */}
-      <div 
-        className="absolute top-0 left-0 right-0 h-1" 
-        style={{ backgroundColor: accentColor }} 
-      />
-
-      <div className="flex items-center justify-between">
-        <div className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-          {label}
-        </div>
-        <div 
-          className="p-1.5 rounded-lg flex items-center justify-center"
-          style={{ backgroundColor: iconBg, color: iconColor }}
-        >
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-      
-      <div className="mt-2.5">
-        <div className="text-2xl font-extrabold text-[var(--text-primary)] font-mono tracking-tight">
-          {value}
-        </div>
-        <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] mt-1 font-medium">
-          {sub && <span className="truncate">{sub}</span>}
-          {trend && (
-            <span className="text-[10px] font-bold text-[#159A75] font-mono ml-auto">
-              {trend}
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+const BANK_BRANDING: Record<
+  string,
+  { name: string; city: string; color: string; bgLight: string }
+> = {
+  ALPHA: {
+    name: 'Bank Alpha',
+    city: 'Bengaluru',
+    color: '#3157D5',
+    bgLight: 'rgba(49, 87, 213, 0.08)',
+  },
+  NOVA: {
+    name: 'Bank Nova',
+    city: 'Mumbai',
+    color: '#6C63D9',
+    bgLight: 'rgba(108, 99, 217, 0.08)',
+  },
+  HORIZON: {
+    name: 'Bank Horizon',
+    city: 'Delhi',
+    color: '#159A9C',
+    bgLight: 'rgba(21, 154, 156, 0.08)',
+  },
 };
 
-// ─── SCENARIO CARD ────────────────────────────────────────────────────────────
-interface ScenarioCardProps {
-  id: ScenarioId;
-  scenarioLabel: string;
+interface EnrichedTransaction extends Transaction {
+  riskScore: number;
+  riskLevel: RiskLevel;
+  decision: DecisionAction;
+  reasons: string[];
   customerName: string;
-  customerId: string;
-  amount: string;
-  city: string;
-  device: string;
-  time: string;
-  outcome: string;
-  riskLevel: 'LOW' | 'MEDIUM' | 'CRITICAL';
-  active: boolean;
-  disabled: boolean;
-  onRun: (id: ScenarioId) => void;
+  bankName: string;
+  bankId: string;
+  riskResult?: RiskAssessmentResult;
 }
 
-const ScenarioCard: React.FC<ScenarioCardProps> = ({
-  id,
-  scenarioLabel,
-  customerName,
-  customerId,
-  amount,
-  city,
-  device,
-  time,
-  outcome,
-  riskLevel,
-  active,
-  disabled,
-  onRun,
-}) => {
-  const cfg = riskConfig[riskLevel];
-
-  return (
-    <div
-      className={`bg-[var(--surface)] rounded-xl flex flex-col border transition-all shadow-xs overflow-hidden ${
-        active ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/20 shadow-md' : 'border-[var(--border)] hover:border-[var(--border-strong)]'
-      }`}
-    >
-      <div className={`px-3 py-1.5 border-b text-[11px] font-semibold flex justify-between items-center ${cfg.bgColor} ${cfg.borderColor} ${cfg.color}`}>
-        <span>{scenarioLabel}</span>
-        <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-white/70 dark:bg-black/40 border border-current">{cfg.label}</span>
-      </div>
-
-      <div className="p-3.5 flex-1 flex flex-col gap-2.5">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-xs font-bold text-[var(--text-primary)]">{customerName}</div>
-            <div className="font-mono text-[10px] text-[var(--text-secondary)]">{customerId}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-xs font-extrabold text-[var(--text-primary)] font-mono">{amount}</div>
-            <div className="text-[10px] text-[var(--text-secondary)] font-mono">{time}</div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 text-xs pt-1.5 border-t border-[var(--border)]">
-          <div className="flex flex-col gap-1 text-[11px]">
-            <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-[#3157D5]" />
-              <span className="truncate">{city}</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
-              <Smartphone className="h-3.5 w-3.5 shrink-0 text-[#D99425]" />
-              <span className="truncate">{device}</span>
-            </div>
-          </div>
-          <div className="flex items-end justify-end">
-            <div className="text-[10px] text-right font-mono font-semibold text-[var(--text-primary)] bg-[var(--surface-muted)] px-2 py-0.5 rounded border border-[var(--border)]">
-              {outcome}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-2.5 border-t border-[var(--border)] bg-[var(--surface-muted)]">
-        <button
-          onClick={() => onRun(id)}
-          disabled={disabled}
-          className={`w-full py-1.5 flex items-center justify-center gap-2 text-xs font-semibold rounded-lg transition-all shadow-xs ${
-            active
-              ? 'bg-[var(--primary)] text-white cursor-wait'
-              : 'bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]'
-          }`}
-        >
-          {active ? (
-            <>
-              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-              Simulating...
-            </>
-          ) : (
-            <>
-              <Play className="h-3.5 w-3.5 text-[var(--primary)]" />
-              Run Scenario
-            </>
-          )}
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// ─── SIMULATION RESULT PANEL ──────────────────────────────────────────────────
-const SimulationResultPanel: React.FC<{ result: SimulationResult; simRef: any }> = ({
-  result,
-  simRef,
-}) => (
-  <div ref={simRef} className="mt-6 animate-in fade-in duration-300">
-    {result.status === 'ERROR' ? (
-      <div className="bg-[var(--surface)] rounded-xl border border-[var(--danger)]/30 p-5 flex items-start gap-3 shadow-xs">
-        <AlertCircle className="h-5 w-5 text-[var(--danger)] shrink-0 mt-0.5" />
-        <div>
-          <h3 className="text-xs font-bold text-[var(--danger)]">Simulation Failed</h3>
-          <p className="text-xs text-[var(--text-secondary)] mt-1">{result.next_stage}</p>
-        </div>
-      </div>
-    ) : (
-      <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs overflow-hidden">
-        <div className="px-5 py-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface-muted)]">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
-            <h3 className="text-xs font-bold text-[var(--text-primary)]">
-              Simulation Complete: {result.scenario_name}
-            </h3>
-          </div>
-          <span className="font-mono text-[11px] text-[var(--text-secondary)]">{result.timestamp}</span>
-        </div>
-
-        <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div className="space-y-3">
-            <div>
-              <div className="text-[10px] uppercase text-[var(--text-secondary)] font-bold">Transaction ID</div>
-              <div className="text-sm font-bold font-mono text-[var(--text-primary)] mt-0.5">{result.formatted_amount}</div>
-              <div className="font-mono text-[11px] text-[var(--primary)] font-semibold">{result.transaction.transaction_id}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase text-[var(--text-secondary)] font-bold">Customer</div>
-              <div className="text-xs font-semibold text-[var(--text-primary)] mt-0.5">{result.customer.name}</div>
-              <div className="font-mono text-[10px] text-[var(--text-secondary)]">{result.customer.customer_id}</div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-[10px] uppercase text-[var(--text-secondary)] font-bold">Context Signals</div>
-            <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-              <MapPin className="h-3.5 w-3.5 text-[var(--primary)]" />
-              <span className="text-[var(--text-primary)] font-medium">{result.location}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-              <Smartphone className="h-3.5 w-3.5 text-[#D99425]" />
-              <span className="text-[#172033] font-medium">{result.device_label}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-[#64748B]">
-              <Lock className="h-3.5 w-3.5 text-[#D95C62]" />
-              <span className="text-[#172033] font-medium">{result.login_signals_summary}</span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-[10px] uppercase text-[#64748B] font-bold">Risk Status</div>
-            <div className="text-xs font-bold text-[#172033]">{result.status}</div>
-            <div className="text-xs text-[#64748B]">{result.next_stage}</div>
-          </div>
-
-          <div className="flex items-center justify-end">
-            <a
-              href="#investigation-workspace"
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#3157D5] text-white hover:bg-[#2645AB] transition-colors shadow-xs flex items-center gap-1.5"
-            >
-              <span>Inspect in Workspace</span>
-              <ChevronRight className="h-3.5 w-3.5" />
-            </a>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-);
-
-// ─── MAIN COMMAND CENTER COMPONENT ────────────────────────────────────────────
 export const CommandCenter: React.FC = () => {
-  const { actualTheme } = useTheme();
-  const isDark = actualTheme === 'dark';
 
-  const [stats, setStats] = useState({
-    totalTx: 0,
-    investigations: 0,
-    criticalCases: 0,
-    blockedTx: 0
-  });
-
-  const [recentCases, setRecentCases] = useState<Case[]>([]);
-  const [networkNodes, setNetworkNodes] = useState<{ id: string; risk: string; amount: number }[]>([]);
-  const [activeSimulation, setActiveSimulation] = useState<ScenarioId | null>(null);
-  const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
-  const [simulationError, setSimulationError] = useState<string | null>(null);
-  const simResultRef = React.useRef<HTMLDivElement>(null);
-
+  // 1. Clock state (live ticking)
+  const [now, setNow] = useState<Date>(new Date());
   useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 2. Real-time Firestore State Collections
+  const [rawTransactions, setRawTransactions] = useState<Transaction[]>([]);
+  const [connectedDevices, setConnectedDevices] = useState<Device[]>([]);
+  const [activeCases, setActiveCases] = useState<Case[]>([]);
+  const [recentAuditLogs, setRecentAuditLogs] = useState<AuditLog[]>([]);
+
+  // 3. Selection & Filter State
+  const [selectedTxnId, setSelectedTxnId] = useState<string | null>(null);
+  const [riskFilter, setRiskFilter] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [centerTab, setCenterTab] = useState<'topology' | 'graph' | 'chain'>('topology');
+
+  // 4. Investigation Execution State (11 agents)
+  const [isInvestigating, setIsInvestigating] = useState<boolean>(false);
+  const [investigationResults, setInvestigationResults] = useState<{
+    txnId: string;
+    investigation: Investigation;
+    agentResults: AgentResult[];
+    caseCreated?: Case;
+    riskResult: RiskAssessmentResult;
+  } | null>(null);
+  const [investigationProgress, setInvestigationProgress] = useState<{
+    agentName: string;
+    completed: number;
+    total: number;
+  }>({ agentName: '', completed: 0, total: 11 });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // FIRESTORE LISTENERS (CLEANUP-SECURED, NO POLLING)
+  // ══════════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    // 1. Real-time Transactions Listener
     const txMap = new Map<string, Transaction>();
+    // Pre-populate with canonical fixtures
     SYNTHETIC_TRANSACTIONS.forEach((t) => txMap.set(t.transaction_id, t));
 
-    const unsubTx = onSnapshot(collection(transactionsCol().firestore, 'transactions'), (snap) => {
-      snap.forEach((doc) => {
-        const t = { ...doc.data(), id: doc.id } as Transaction;
-        txMap.set(t.transaction_id, t);
-      });
-      const allTx = Array.from(txMap.values());
-      let blocked = 0;
-      const nodes: { id: string; risk: string; amount: number }[] = [];
-      allTx.forEach(tx => {
-        let risk = 'LOW';
-        if (tx.status === 'BLOCK_AND_REVIEW' || tx.status === 'BLOCKED') {
-          blocked++;
-          risk = tx.amount > 50000 ? 'CRITICAL' : 'HIGH';
-        } else if (tx.status === 'STEP_UP_VERIFICATION') {
-          risk = 'MEDIUM';
-        }
-        nodes.push({ id: tx.transaction_id, risk, amount: tx.amount });
-      });
-      setStats(s => ({ ...s, totalTx: allTx.length, blockedTx: blocked }));
-      setNetworkNodes(nodes.slice(0, 48));
-    });
+    const unsubTx = onSnapshot(
+      query(transactionsCol(), orderBy('timestamp', 'desc'), limit(100)),
+      (snapshot) => {
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data() as Transaction;
+          const id = docSnap.id;
+          txMap.set(id, { ...data, transaction_id: id, id });
+        });
+        const sorted = Array.from(txMap.values()).sort(
+          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+        setRawTransactions(sorted);
+      },
+      (err) => {
+        console.warn('[FinGuard SOC] Transactions snapshot warning:', err);
+      }
+    );
 
-    const unsubCases = onSnapshot(query(casesCol(), orderBy('createdAt', 'desc'), limit(5)), (snap) => {
-      let critical = 0;
-      const rCases: Case[] = [];
-      snap.forEach(doc => {
-        const data = doc.data() as Case;
-        rCases.push(data);
-        if (data.riskLevel === 'CRITICAL') critical++;
-      });
-      setStats(s => ({ ...s, investigations: snap.size, criticalCases: critical }));
-      setRecentCases(rCases);
-    });
+    // 2. Real-time Devices Listener
+    const unsubDevices = onSnapshot(
+      query(devicesCol(), limit(30)),
+      (snapshot) => {
+        const devs: Device[] = [];
+        snapshot.forEach((docSnap) => {
+          devs.push({ ...docSnap.data(), device_id: docSnap.id } as Device);
+        });
+        setConnectedDevices(devs);
+      },
+      (err) => {
+        console.warn('[FinGuard SOC] Devices snapshot warning:', err);
+      }
+    );
+
+    // 3. Real-time Cases Listener
+    const unsubCases = onSnapshot(
+      query(casesCol(), orderBy('createdAt', 'desc'), limit(20)),
+      (snapshot) => {
+        const cList: Case[] = [];
+        snapshot.forEach((docSnap) => {
+          cList.push({ ...docSnap.data(), id: docSnap.id } as Case);
+        });
+        setActiveCases(cList);
+      },
+      (err) => {
+        console.warn('[FinGuard SOC] Cases snapshot warning:', err);
+      }
+    );
+
+    // 4. Real-time Audit Logs Listener
+    const unsubAudit = onSnapshot(
+      query(auditLogsCol(), orderBy('createdAt', 'desc'), limit(25)),
+      (snapshot) => {
+        const aList: AuditLog[] = [];
+        snapshot.forEach((docSnap) => {
+          aList.push({ ...docSnap.data(), id: docSnap.id } as AuditLog);
+        });
+        setRecentAuditLogs(aList);
+      },
+      (err) => {
+        console.warn('[FinGuard SOC] Audit snapshot warning:', err);
+      }
+    );
 
     return () => {
       unsubTx();
+      unsubDevices();
       unsubCases();
+      unsubAudit();
     };
   }, []);
 
-  const handleRunScenario = async (scenarioId: ScenarioId) => {
-    setActiveSimulation(scenarioId);
-    setSimulationError(null);
-    setSimulationResult(null);
-    try {
-      const res = await simulateScenario(scenarioId);
-      setSimulationResult(res);
-      setTimeout(() => {
-        simResultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 50);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setSimulationError(msg);
-      setTimeout(() => {
-        simResultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 50);
-    } finally {
-      setActiveSimulation(null);
+  // ══════════════════════════════════════════════════════════════════════════
+  // RISK ENGINE ENRICHMENT PIPELINE
+  // ══════════════════════════════════════════════════════════════════════════
+  const enrichedTransactions = useMemo<EnrichedTransaction[]>(() => {
+    return rawTransactions.map((tx) => {
+      const demoId = DEMO_IDENTITIES[tx.customer_id];
+      const customer = SYNTHETIC_CUSTOMERS[tx.customer_id];
+      const customerName = demoId?.name || customer?.name || tx.customer_id;
+
+      // Determine Bank
+      let bankId = 'ALPHA';
+      if (demoId) {
+        bankId = demoId.bankId;
+      } else if (tx.account_id?.includes('1002') || tx.account_id?.includes('NOVA')) {
+        bankId = 'NOVA';
+      } else if (tx.account_id?.includes('1008') || tx.account_id?.includes('HORIZON')) {
+        bankId = 'HORIZON';
+      }
+      const bankName = BANK_BRANDING[bankId]?.name || 'Bank Alpha';
+
+      // Evaluate real risk using the centralized risk engine
+      let riskResult: RiskAssessmentResult;
+      try {
+        riskResult = evaluateTransactionContext(tx);
+      } catch {
+        // Fallback evaluation for custom dynamic phone transactions
+        const fallbackCustomer: Customer = customer || {
+          customer_id: tx.customer_id,
+          name: customerName,
+          home_city: tx.city || 'Bengaluru',
+          normal_amount_min: 100,
+          normal_amount_max: 20000,
+          usual_cities: [tx.city || 'Bengaluru'],
+          usual_device_ids: [tx.device_id],
+          risk_profile: tx.customer_id === 'C1003' ? 'HIGH' : 'LOW',
+        };
+        const input: RiskEvaluationInput = {
+          transaction: tx,
+          customer: fallbackCustomer,
+          networkSignal:
+            tx.customer_id === 'C1003'
+              ? SYNTHETIC_NETWORK_SIGNALS[1]
+              : SYNTHETIC_NETWORK_SIGNALS[0],
+        };
+        riskResult = evaluateTransactionRisk(input);
+      }
+
+      // Format triggers
+      const reasons =
+        riskResult.reasonCodes && riskResult.reasonCodes.length > 0
+          ? riskResult.reasonCodes.map((r) => r.title)
+          : riskResult.triggeredSignals.map((s) => s.title);
+
+      return {
+        ...tx,
+        riskScore: riskResult.riskScore,
+        riskLevel: riskResult.riskLevel,
+        decision: riskResult.decision,
+        reasons: reasons.length > 0 ? reasons : ['Verified low-risk transaction pattern'],
+        customerName,
+        bankName,
+        bankId,
+        riskResult,
+      };
+    });
+  }, [rawTransactions]);
+
+  // Selected Transaction reference (defaults to newest high-risk or newest transaction)
+  const selectedTxn = useMemo<EnrichedTransaction | null>(() => {
+    if (selectedTxnId) {
+      const found = enrichedTransactions.find((t) => t.transaction_id === selectedTxnId);
+      if (found) return found;
     }
-  };
+    // Default to the first critical/high transaction or top transaction
+    const highRisk = enrichedTransactions.find(
+      (t) => t.riskLevel === 'CRITICAL' || t.riskLevel === 'HIGH'
+    );
+    return highRisk || enrichedTransactions[0] || null;
+  }, [selectedTxnId, enrichedTransactions]);
+
+  // Filtered transaction feed
+  const filteredTransactions = useMemo(() => {
+    return enrichedTransactions.filter((tx) => {
+      const matchesRisk =
+        riskFilter === 'ALL' || tx.riskLevel === riskFilter;
+      const matchesSearch =
+        !searchQuery ||
+        tx.transaction_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tx.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tx.merchant.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tx.device_id.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesRisk && matchesSearch;
+    });
+  }, [enrichedTransactions, riskFilter, searchQuery]);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // DYNAMIC KPIS (DERIVED FROM ACTUAL REALTIME DATA)
+  // ══════════════════════════════════════════════════════════════════════════
+  const kpis = useMemo(() => {
+    const totalTx = enrichedTransactions.length;
+    const riskyTx = enrichedTransactions.filter(
+      (t) => t.riskLevel === 'MEDIUM' || t.riskLevel === 'HIGH' || t.riskLevel === 'CRITICAL'
+    ).length;
+    const criticalAlerts = enrichedTransactions.filter(
+      (t) => t.riskLevel === 'CRITICAL'
+    ).length;
+    const openCasesCount = activeCases.length;
+    const onlineDevs = connectedDevices.filter(
+      (d) => d.status === 'ONLINE'
+    ).length;
+    const activeInvestigationsCount = activeCases.filter(
+      (c) => c.status === 'INVESTIGATING' || c.status === 'NEW'
+    ).length;
+
+    return {
+      totalTx,
+      riskyTx,
+      criticalAlerts,
+      activeInvestigations: activeInvestigationsCount || (criticalAlerts > 0 ? 1 : 0),
+      connectedDevices: onlineDevs || connectedDevices.length || 4,
+      openCases: openCasesCount,
+    };
+  }, [enrichedTransactions, activeCases, connectedDevices]);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // INVOKE EXISTING 11-AGENT INVESTIGATION PIPELINE
+  // ══════════════════════════════════════════════════════════════════════════
+  const handleInvestigateSelected = useCallback(async () => {
+    if (!selectedTxn || isInvestigating) return;
+
+    setIsInvestigating(true);
+    setInvestigationProgress({ agentName: 'Initializing Pipeline...', completed: 0, total: 11 });
+
+    try {
+      const result = await runInvestigationForTransaction(
+        selectedTxn,
+        (agentName, completed, total) => {
+          setInvestigationProgress({ agentName, completed, total });
+        }
+      );
+      setInvestigationResults({
+        txnId: selectedTxn.transaction_id,
+        investigation: result.investigation,
+        agentResults: result.agentResults,
+        caseCreated: result.caseCreated,
+        riskResult: result.riskResult,
+      });
+    } catch (err) {
+      console.error('[FinGuard SOC] Investigation pipeline error:', err);
+    } finally {
+      setIsInvestigating(false);
+    }
+  }, [selectedTxn, isInvestigating]);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // MULTI-BANK TOPOLOGY METRICS
+  // ══════════════════════════════════════════════════════════════════════════
+  const bankMetrics = useMemo(() => {
+    const metrics: Record<
+      string,
+      { count: number; volume: number; critical: number; devices: number }
+    > = {
+      ALPHA: { count: 0, volume: 0, critical: 0, devices: 0 },
+      NOVA: { count: 0, volume: 0, critical: 0, devices: 0 },
+      HORIZON: { count: 0, volume: 0, critical: 0, devices: 0 },
+    };
+
+    enrichedTransactions.forEach((tx) => {
+      const b = metrics[tx.bankId] || metrics.ALPHA;
+      b.count += 1;
+      b.volume += tx.amount;
+      if (tx.riskLevel === 'CRITICAL' || tx.riskLevel === 'HIGH') {
+        b.critical += 1;
+      }
+    });
+
+    connectedDevices.forEach((dev) => {
+      if (dev.bank && metrics[dev.bank]) {
+        metrics[dev.bank].devices += 1;
+      }
+    });
+
+    return metrics;
+  }, [enrichedTransactions, connectedDevices]);
 
   return (
-    <div className="space-y-5">
-      {/* ─── WORKSTATION HERO BAR ─────────────────────────────────────────────── */}
-      <div className="glass-card p-5 border-[var(--border-subtle)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-xs font-semibold text-[var(--accent)] font-mono">
-              Live Workstation
-            </span>
-            <span className="text-[#64748B] text-xs">•</span>
-            <span className="text-[11px] text-[var(--text-muted)] font-mono">
-              Deterministic Multi-Agent Engine
-            </span>
-          </div>
-          <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">
-            Fraud Intelligence Command Center
-          </h1>
-          <p className="text-xs text-[var(--text-secondary)] mt-0.5 max-w-xl">
-            Real-time transaction anomaly monitoring, synthetic pipeline execution, and case queue management.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <a
-            href="#live-events"
-            className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
-          >
-            <Activity className="h-3.5 w-3.5 text-[var(--accent)]" />
-            <span>Event Stream</span>
-          </a>
-          <a
-            href="#investigation-workspace"
-            className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
-          >
-            <ShieldCheck className="h-3.5 w-3.5" />
-            <span>Cockpit</span>
-          </a>
-        </div>
-      </div>
-
-      {/* ─── SYSTEM STATUS STAT GRID ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <StatCard
-          icon={Activity}
-          label="Total Transactions"
-          value={stats.totalTx.toLocaleString()}
-          trend="+12% /hr"
-          accentColor="#3157D5"
-          iconBg="#EEF2FF"
-          iconColor="#3157D5"
-          sub="Live transaction stream"
-        />
-        <StatCard
-          icon={ShieldCheck}
-          label="Investigations"
-          value={stats.investigations}
-          accentColor="#6C63D9"
-          iconBg="#F3F0FF"
-          iconColor="#6C63D9"
-          sub="Autonomous 11-agent pipeline"
-        />
-        <StatCard
-          icon={AlertCircle}
-          label="Critical Cases"
-          value={stats.criticalCases}
-          accentColor="#D95C62"
-          iconBg="#FFF1F2"
-          iconColor="#D95C62"
-          sub="Requires human triage"
-        />
-        <StatCard
-          icon={Lock}
-          label="Blocked High-Risk"
-          value={stats.blockedTx}
-          accentColor="#D99425"
-          iconBg="#FEFCE8"
-          iconColor="#D99425"
-          sub="Deterministic containment"
-        />
-      </div>
-
-      {/* ─── DASHBOARD PANELS ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        
-        {/* Fraud Intelligence Network Visualization (Theme-Aware 3D Depth & Floating Clusters) */}
-        <div className="lg:col-span-2 bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs p-4.5 flex flex-col gap-3 transition-colors duration-200">
-          <div className="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
-            <h2 className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2 uppercase tracking-wider">
-              <Network className="h-4 w-4 text-[var(--primary)]" /> Fraud Intelligence Network
-            </h2>
-            <div className="flex items-center gap-3 text-[10px] font-semibold text-[var(--text-secondary)]">
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#159A75]" /> Low</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#D99425]" /> Step-Up</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#D95C62]" /> High</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#D95C62] animate-pulse" /> Critical</span>
-            </div>
-          </div>
-          
-          <div 
-            className="flex-1 bg-[var(--background)] border border-[var(--border)] rounded-xl p-5 relative min-h-[240px] overflow-hidden flex flex-wrap content-start gap-3 transition-colors duration-200"
-            style={{ perspective: '900px' }}
-          >
-            {/* Theme-aware grid background */}
-            <div 
-              className="absolute inset-0 pointer-events-none opacity-40" 
-              style={{ 
-                backgroundImage: isDark 
-                  ? 'radial-gradient(#22354D 1.5px, transparent 1.5px)' 
-                  : 'radial-gradient(#CBD5E1 1px, transparent 1px)', 
-                backgroundSize: '24px 24px' 
-              }} 
-            />
-
-            {/* Floating Transaction Nodes with subtle 3D depth */}
-            {networkNodes.map((node, nIdx) => {
-              const isCritical = node.risk === 'CRITICAL';
-              const isHigh = node.risk === 'HIGH';
-              const isMedium = node.risk === 'MEDIUM';
-
-              let nodeColor = 'bg-[#159A75] border-[#159A75]';
-              let glowColor = 'rgba(21, 154, 117, 0.2)';
-              if (isCritical) {
-                nodeColor = 'bg-[#D95C62] border-[#D95C62]';
-                glowColor = 'rgba(217, 92, 98, 0.4)';
-              } else if (isHigh) {
-                nodeColor = 'bg-[#D95C62] border-[#D95C62]';
-                glowColor = 'rgba(217, 92, 98, 0.25)';
-              } else if (isMedium) {
-                nodeColor = 'bg-[#D99425] border-[#D99425]';
-                glowColor = 'rgba(217, 148, 37, 0.25)';
-              }
-
-              // Varying node sizes based on transaction amount
-              let sizeClass = 'h-3.5 w-3.5';
-              if (node.amount > 60000) sizeClass = 'h-5 w-5';
-              else if (node.amount > 20000) sizeClass = 'h-4 w-4';
-
-              // Alternate floating animations for depth
-              const floatAnim = nIdx % 2 === 0 ? 'animate-float-1' : 'animate-float-2';
-
-              return (
-                <div 
-                  key={node.id}
-                  className={`group relative flex items-center justify-center cursor-pointer transition-transform duration-300 hover:scale-135 hover:z-30 ${floatAnim}`}
-                >
-                  {/* Subtle pulse ring for critical events */}
-                  {isCritical && (
-                    <span className="absolute -inset-1.5 rounded-full bg-[#D95C62] opacity-75 animate-pulse-ring pointer-events-none" />
-                  )}
-
-                  <div 
-                    className={`rounded-full border shadow-xs ${sizeClass} ${nodeColor} transition-all duration-200`}
-                    style={{ boxShadow: `0 2px 6px ${glowColor}` }}
-                  />
-
-                  {/* Rich hover tooltip */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col bg-[var(--surface)] border border-[var(--border)] shadow-elevated rounded-lg p-2 text-[10px] font-mono z-40 whitespace-nowrap min-w-[120px] pointer-events-none">
-                    <span className="text-[var(--text-secondary)] font-semibold">{node.id}</span>
-                    <span className="text-xs font-bold text-[var(--text-primary)]">₹{node.amount.toLocaleString()}</span>
-                    <span className={`font-semibold mt-0.5 ${isCritical ? 'text-[#D95C62]' : isMedium ? 'text-[#D99425]' : 'text-[#159A75]'}`}>
-                      Status: {node.risk}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-
-            {networkNodes.length === 0 && (
-              <div className="m-auto text-xs text-[var(--text-secondary)] flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[var(--primary)] animate-ping" />
-                <span>Synchronizing live transaction intelligence stream...</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Recent Cases Queue */}
-        <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs flex flex-col overflow-hidden transition-colors duration-200">
-          <div className="px-4 py-3 border-b border-[var(--border)] bg-[var(--surface-muted)] flex items-center justify-between">
-            <h2 className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2 uppercase tracking-wider">
-              <FolderKanban className="h-4 w-4 text-[var(--secondary)]" /> Active Investigation Cases
-            </h2>
-            <a href="#cases" className="text-xs text-[var(--primary)] hover:underline font-semibold">View All</a>
-          </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2 max-h-[260px]">
-            {recentCases.map(c => (
-              <a href="#cases" key={c.id} className="block p-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)] hover:shadow-xs transition-all">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="font-mono text-xs font-bold text-[var(--text-primary)]">
-                    {c.caseNumber}
-                  </span>
-                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${
-                    c.riskLevel === 'CRITICAL' ? 'bg-[#FFF1F2] text-[#D95C62] border border-[#FFE4E6]' : 'bg-[#FFF7ED] text-[#D95C62] border border-[#FED7AA]'
-                  }`}>
-                    {c.riskLevel}
-                  </span>
-                </div>
-                <div className="text-[11px] text-[var(--text-secondary)] flex items-center gap-1.5 truncate">
-                  <FileText className="h-3 w-3 text-[var(--text-secondary)] shrink-0" />
-                  <span className="truncate font-medium">{c.recommendation.replace(/_/g, ' ')}</span>
-                </div>
-              </a>
-            ))}
-            {recentCases.length === 0 && (
-              <div className="p-6 text-center text-xs text-[var(--text-secondary)]">
-                No open investigation cases.
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ─── TRANSACTION SIMULATOR (6 CANONICAL SCENARIOS) ───────────────────── */}
-      <div className="glass-card p-5 border-[var(--border-subtle)]">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--accent-light)] text-[var(--accent)]">
-              <Play className="h-4 w-4" />
+    <div className="min-h-screen bg-[var(--bg-root)] text-[var(--text-primary)] transition-colors duration-200">
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* 1. SOC COMMAND CENTER HEADER STRIP                                 */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      <div className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 sm:px-6 py-3 shadow-xs">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white shadow-md shadow-blue-500/20">
+              <ShieldAlert className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Canonical Demo Scenarios</h2>
-              <p className="text-[11px] text-[var(--text-muted)]">
-                Deterministic fraud simulation triggers for pipeline verification
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-black tracking-tight text-[var(--text-primary)]">
+                  FinGuard AI <span className="text-[var(--accent)] font-mono text-xs uppercase px-1.5 py-0.5 rounded bg-[var(--accent)]/10 border border-[var(--accent)]/20">SOC v3.0</span>
+                </h1>
+                <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  ACTIVE REALTIME STREAM
+                </div>
+              </div>
+              <p className="terminal-text text-[11px] text-[var(--text-muted)]">
+                Autonomous Multi-Bank Fraud Operations &amp; 11-Agent Investigation Center
               </p>
             </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 mb-2">
-          <ScenarioCard
-            id="legitimate"
-            scenarioLabel="Scenario A · Legitimate"
-            customerName="Priya Sharma"
-            customerId="C1001"
-            amount="₹1,500.00"
-            city="Bengaluru"
-            device="Known Mobile"
-            time="07:30 PM"
-            outcome="ALLOW"
-            riskLevel="LOW"
-            active={activeSimulation === 'legitimate'}
-            disabled={activeSimulation !== null && activeSimulation !== 'legitimate'}
-            onRun={handleRunScenario}
-          />
-          <ScenarioCard
-            id="suspicious"
-            scenarioLabel="Scenario B · Suspicious"
-            customerName="Rohan Mehta"
-            customerId="C1002"
-            amount="₹25,000.00"
-            city="Delhi"
-            device="New Desktop"
-            time="11:15 PM"
-            outcome="STEP-UP (OTP)"
-            riskLevel="MEDIUM"
-            active={activeSimulation === 'suspicious'}
-            disabled={activeSimulation !== null && activeSimulation !== 'suspicious'}
-            onRun={handleRunScenario}
-          />
-          <ScenarioCard
-            id="high_risk_c1003"
-            scenarioLabel="Scenario C · Hero ATO"
-            customerName="Vikram Malhotra"
-            customerId="C1003"
-            amount="₹85,000.00"
-            city="Mumbai (VPN)"
-            device="Kali Linux VM"
-            time="02:13 AM"
-            outcome="BLOCK & CASE"
-            riskLevel="CRITICAL"
-            active={activeSimulation === 'high_risk_c1003'}
-            disabled={activeSimulation !== null && activeSimulation !== 'high_risk_c1003'}
-            onRun={handleRunScenario}
-          />
-          <ScenarioCard
-            id="scenario_d_traveller"
-            scenarioLabel="Scenario D · Frequent Traveller"
-            customerName="Rajiv Sen"
-            customerId="C1004"
-            amount="₹18,500.00"
-            city="Mumbai Airport"
-            device="Known iPhone"
-            time="02:00 PM"
-            outcome="ALLOW (Isolation)"
-            riskLevel="LOW"
-            active={activeSimulation === 'scenario_d_traveller'}
-            disabled={activeSimulation !== null && activeSimulation !== 'scenario_d_traveller'}
-            onRun={handleRunScenario}
-          />
-          <ScenarioCard
-            id="scenario_e_fraud_ring"
-            scenarioLabel="Scenario E · Mule Ring Cluster"
-            customerName="Rahul Varma"
-            customerId="C1015"
-            amount="₹49,500.00"
-            city="Pune (Tor)"
-            device="Shared Emulator"
-            time="03:10 AM"
-            outcome="BLOCK & CASE"
-            riskLevel="CRITICAL"
-            active={activeSimulation === 'scenario_e_fraud_ring'}
-            disabled={activeSimulation !== null && activeSimulation !== 'scenario_e_fraud_ring'}
-            onRun={handleRunScenario}
-          />
-          <ScenarioCard
-            id="scenario_f_prompt_injection"
-            scenarioLabel="Scenario F · Input Injection"
-            customerName="Amit Joshi"
-            customerId="C1020"
-            amount="₹7,500.00"
-            city="Bengaluru"
-            device="Known Device"
-            time="12:00 PM"
-            outcome="ALLOW (Sanitized)"
-            riskLevel="LOW"
-            active={activeSimulation === 'scenario_f_prompt_injection'}
-            disabled={activeSimulation !== null && activeSimulation !== 'scenario_f_prompt_injection'}
-            onRun={handleRunScenario}
-          />
-        </div>
-        
-        {simulationError && (
-          <div className="rounded border border-[#FEE2E2] dark:border-rose-900/40 bg-[#FEF2F2] dark:bg-rose-950/20 p-3 text-xs text-[#C43D4B] mt-3">
-            <strong>Simulation Error:</strong> {simulationError}
+          <div className="flex items-center gap-3 text-xs font-mono">
+            {/* Connected devices badge */}
+            <div className="flex items-center gap-2 rounded-lg bg-[var(--bg-root)] border border-[var(--border)] px-3 py-1.5">
+              <Smartphone className="h-3.5 w-3.5 text-blue-500" />
+              <span className="text-[var(--text-secondary)] font-medium">Nodes:</span>
+              <span className="font-bold text-[var(--text-primary)]">{kpis.connectedDevices} Online</span>
+            </div>
+
+            {/* Live UTC/IST Clock */}
+            <div className="flex items-center gap-2 rounded-lg bg-[var(--bg-root)] border border-[var(--border)] px-3 py-1.5 text-[var(--text-secondary)]">
+              <Clock className="h-3.5 w-3.5 text-[var(--accent)]" />
+              <span className="font-bold text-[var(--text-primary)]">
+                {now.toLocaleTimeString('en-IN', { hour12: false })}
+              </span>
+              <span className="text-[10px] text-[var(--text-muted)]">IST</span>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
-      {simulationResult && (
-        <SimulationResultPanel result={simulationResult} simRef={simResultRef} />
-      )}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-5 space-y-5">
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        {/* 2. LIVE COMMAND CENTER KPI STRIP                                   */}
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {/* Total Transactions */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-3.5 shadow-xs transition-all hover:border-[var(--border-strong)]">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+              <span>Transactions</span>
+              <Activity className="h-4 w-4 text-blue-500" />
+            </div>
+            <div className="mt-2 text-2xl font-black font-mono tracking-tight text-[var(--text-primary)]">
+              {kpis.totalTx}
+            </div>
+            <div className="mt-0.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-semibold">
+              Live Firestore Sync
+            </div>
+          </div>
+
+          {/* Risky Transactions */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-3.5 shadow-xs transition-all hover:border-[var(--border-strong)]">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+              <span>Risky Activity</span>
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+            </div>
+            <div className="mt-2 text-2xl font-black font-mono tracking-tight text-amber-600 dark:text-amber-400">
+              {kpis.riskyTx}
+            </div>
+            <div className="mt-0.5 text-[10px] text-[var(--text-muted)] font-mono">
+              Score ≥ 40 pts
+            </div>
+          </div>
+
+          {/* Critical Alerts */}
+          <div className="rounded-xl border border-rose-200 dark:border-rose-900/40 bg-[var(--bg-surface)] p-3.5 shadow-xs transition-all hover:border-rose-400">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+              <span>Critical Alerts</span>
+              <ShieldAlert className="h-4 w-4 text-rose-500 animate-pulse" />
+            </div>
+            <div className="mt-2 text-2xl font-black font-mono tracking-tight text-rose-600 dark:text-rose-400">
+              {kpis.criticalAlerts}
+            </div>
+            <div className="mt-0.5 text-[10px] text-rose-500 font-mono font-semibold">
+              Interdictions Required
+            </div>
+          </div>
+
+          {/* Active Investigations */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-3.5 shadow-xs transition-all hover:border-[var(--border-strong)]">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+              <span>Investigations</span>
+              <Cpu className="h-4 w-4 text-indigo-500" />
+            </div>
+            <div className="mt-2 text-2xl font-black font-mono tracking-tight text-indigo-600 dark:text-indigo-400">
+              {kpis.activeInvestigations}
+            </div>
+            <div className="mt-0.5 text-[10px] text-[var(--text-muted)] font-mono">
+              11 Agents Standby
+            </div>
+          </div>
+
+          {/* Connected Devices */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-3.5 shadow-xs transition-all hover:border-[var(--border-strong)]">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+              <span>Devices Active</span>
+              <Smartphone className="h-4 w-4 text-blue-500" />
+            </div>
+            <div className="mt-2 text-2xl font-black font-mono tracking-tight text-[var(--text-primary)]">
+              {kpis.connectedDevices}
+            </div>
+            <div className="mt-0.5 text-[10px] text-blue-600 dark:text-blue-400 font-mono font-semibold">
+              4 Phones + 1 Laptop
+            </div>
+          </div>
+
+          {/* Open Cases */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-3.5 shadow-xs transition-all hover:border-[var(--border-strong)]">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+              <span>Open Cases</span>
+              <FolderKanban className="h-4 w-4 text-purple-500" />
+            </div>
+            <div className="mt-2 text-2xl font-black font-mono tracking-tight text-[var(--text-primary)]">
+              {kpis.openCases}
+            </div>
+            <div className="mt-0.5 text-[10px] text-[var(--text-muted)] font-mono">
+              Escalated / Pending
+            </div>
+          </div>
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        {/* 3. PROMINENT CRITICAL FRAUD ALERT (WHEN HIGH/CRITICAL SELECTED)     */}
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        {selectedTxn && (selectedTxn.riskLevel === 'CRITICAL' || selectedTxn.riskLevel === 'HIGH') && (
+          <div className="relative overflow-hidden rounded-2xl border-2 border-rose-500/80 bg-gradient-to-r from-rose-950/20 via-rose-900/10 to-transparent p-5 shadow-lg shadow-rose-950/20 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="p-2.5 rounded-xl bg-rose-600 text-white shadow-md shadow-rose-600/30 shrink-0 mt-0.5">
+                  <ShieldAlert className="h-6 w-6 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black tracking-wider uppercase text-rose-600 dark:text-rose-400">
+                      🚨 CRITICAL FRAUD INTERDICTION REQUIRED
+                    </span>
+                    <span className="font-mono text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded-full font-bold">
+                      RISK SCORE: {selectedTxn.riskScore}/100
+                    </span>
+                    <span className="font-mono text-[10px] bg-[var(--bg-surface)] border border-[var(--border)] px-2 py-0.5 rounded text-[var(--text-muted)]">
+                      {selectedTxn.transaction_id}
+                    </span>
+                  </div>
+
+                  <h3 className="mt-1 text-base font-bold text-[var(--text-primary)] flex items-center gap-2 flex-wrap">
+                    <span>₹{selectedTxn.amount.toLocaleString('en-IN')}</span>
+                    <span className="text-[var(--text-muted)] font-normal">to</span>
+                    <span>{selectedTxn.merchant}</span>
+                    <span className="text-[var(--text-muted)] font-normal">•</span>
+                    <span className="text-blue-500 font-semibold">{selectedTxn.customerName}</span>
+                    <span className="text-[var(--text-muted)] font-normal text-xs font-mono">({selectedTxn.bankName})</span>
+                  </h3>
+
+                  {/* Triggered Reasons directly from Risk Engine */}
+                  <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] font-bold text-[var(--text-secondary)]">Signals:</span>
+                    {selectedTxn.reasons.map((r, i) => (
+                      <span
+                        key={i}
+                        className="rounded-md bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:text-rose-300 font-mono"
+                      >
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action: Trigger 11 Agents */}
+              <div className="flex items-center gap-2.5 shrink-0">
+                <button
+                  onClick={handleInvestigateSelected}
+                  disabled={isInvestigating}
+                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/25 transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg disabled:opacity-50"
+                >
+                  {isInvestigating ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <span>Processing ({investigationProgress.completed}/11)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 fill-white text-white" />
+                      <span>INVESTIGATE WITH 11 AGENTS</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        {/* 4. MAIN SOC SPLIT WORKSPACE                                        */}
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {/* LEFT COLUMN (5 cols): LIVE TRANSACTION STREAM FEED              */}
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          <div className="lg:col-span-5 space-y-3">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 shadow-xs">
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-[var(--accent)]" />
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                    Live Transaction Stream
+                  </h2>
+                </div>
+                <span className="font-mono text-[10px] font-bold text-[var(--text-muted)]">
+                  {filteredTransactions.length} Events
+                </span>
+              </div>
+
+              {/* Search & Filter Bar */}
+              <div className="mt-3 flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[var(--text-muted)]" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search customer, ID, merchant..."
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-root)] py-1.5 pl-8 pr-3 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none"
+                  />
+                </div>
+                <select
+                  value={riskFilter}
+                  onChange={(e) => setRiskFilter(e.target.value)}
+                  className="rounded-lg border border-[var(--border)] bg-[var(--bg-root)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
+                >
+                  <option value="ALL">All Risk</option>
+                  <option value="CRITICAL">Critical</option>
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LOW">Low</option>
+                </select>
+              </div>
+
+              {/* Real-time Event Cards Feed */}
+              <div className="mt-3 space-y-2 max-h-[620px] overflow-y-auto pr-1">
+                {filteredTransactions.length === 0 ? (
+                  <div className="text-center py-12 text-xs text-[var(--text-muted)]">
+                    No transactions match the selected filter.
+                  </div>
+                ) : (
+                  filteredTransactions.map((tx) => {
+                    const isSelected = selectedTxn?.transaction_id === tx.transaction_id;
+                    const rStyle = RISK_STYLES[tx.riskLevel];
+                    const timeStr = new Date(tx.timestamp).toLocaleTimeString('en-IN', {
+                      hour12: false,
+                    });
+
+                    return (
+                      <div
+                        key={tx.transaction_id}
+                        onClick={() => setSelectedTxnId(tx.transaction_id)}
+                        className={`group relative rounded-xl border p-3.5 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-blue-500 bg-blue-500/5 shadow-sm ring-1 ring-blue-500/30'
+                            : 'border-[var(--border)] bg-[var(--bg-root)] hover:border-[var(--border-strong)]'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-[10px] text-[var(--text-muted)]">
+                                {timeStr}
+                              </span>
+                              <span className="font-mono text-[11px] font-bold text-[var(--text-primary)]">
+                                {tx.transaction_id}
+                              </span>
+                              <span
+                                className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded border ${rStyle.badgeBg} ${rStyle.badgeText} ${rStyle.border}`}
+                              >
+                                {rStyle.label} ({tx.riskScore})
+                              </span>
+                            </div>
+                            <div className="mt-1 flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-[var(--text-primary)]">
+                                {tx.customerName}
+                              </span>
+                              <span className="text-[11px] text-[var(--text-muted)]">•</span>
+                              <span className="text-[11px] text-[var(--text-secondary)] font-medium">
+                                {tx.bankName}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <div className="text-sm font-black font-mono text-[var(--text-primary)]">
+                              ₹{tx.amount.toLocaleString('en-IN')}
+                            </div>
+                            <div className="mt-0.5 text-[10px] font-mono font-bold text-slate-500">
+                              {tx.merchant}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-2.5 flex items-center justify-between text-[11px] pt-2 border-t border-[var(--border-subtle)] text-[var(--text-muted)] font-mono">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <Smartphone className="h-3 w-3 shrink-0 text-amber-500" />
+                            <span className="truncate">{tx.device_id}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span
+                              className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                tx.status === 'BLOCKED'
+                                  ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold'
+                                  : tx.status === 'CANCELLED'
+                                  ? 'bg-slate-500/15 text-slate-500 font-bold'
+                                  : tx.status === 'APPROVAL_REQUIRED'
+                                  ? 'bg-amber-500/15 text-amber-600 font-bold'
+                                  : 'bg-emerald-500/15 text-emerald-600 font-bold'
+                              }`}
+                            >
+                              {tx.status}
+                            </span>
+                            <span className="text-[9px] font-mono text-[var(--text-muted)]">
+                              • {tx.decision}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {/* CENTER & RIGHT (7 cols): TOPOLOGY / GRAPH / FRAUD CHAIN / DEVS   */}
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          <div className="lg:col-span-7 space-y-4">
+            {/* Tab Controls */}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 shadow-xs">
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCenterTab('topology')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      centerTab === 'topology'
+                        ? 'bg-[var(--accent)] text-white shadow-xs'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-root)]'
+                    }`}
+                  >
+                    <Building2 className="h-3.5 w-3.5" />
+                    Multi-Bank Topology
+                  </button>
+                  <button
+                    onClick={() => setCenterTab('graph')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      centerTab === 'graph'
+                        ? 'bg-[var(--accent)] text-white shadow-xs'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-root)]'
+                    }`}
+                  >
+                    <GitMerge className="h-3.5 w-3.5" />
+                    Entity Graph
+                  </button>
+                  <button
+                    onClick={() => setCenterTab('chain')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      centerTab === 'chain'
+                        ? 'bg-[var(--accent)] text-white shadow-xs'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-root)]'
+                    }`}
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    Fraud Chain
+                  </button>
+                </div>
+
+                {selectedTxn && (
+                  <span className="text-[11px] font-mono text-[var(--text-muted)]">
+                    Target: <strong className="text-[var(--text-primary)]">{selectedTxn.transaction_id}</strong>
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-4">
+                {/* ─── TAB 1: MULTI-BANK TOPOLOGY ─────────────────────────── */}
+                {centerTab === 'topology' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {SYNTHETIC_BANKS.map((b) => {
+                        const m = bankMetrics[b.id] || { count: 0, volume: 0, critical: 0, devices: 0 };
+                        return (
+                          <div
+                            key={b.id}
+                            className="rounded-xl border p-4 bg-[var(--bg-root)] relative overflow-hidden shadow-xs hover:border-[var(--border-strong)] transition-all"
+                            style={{ borderColor: `${b.color}40` }}
+                          >
+                            <div
+                              className="absolute top-0 left-0 right-0 h-1"
+                              style={{ backgroundColor: b.color }}
+                            />
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black" style={{ color: b.color }}>
+                                {b.name}
+                              </span>
+                              <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                                {b.city}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-[10px] text-[var(--text-muted)] truncate">
+                              {b.tagline}
+                            </p>
+
+                            <div className="mt-3 grid grid-cols-2 gap-2 pt-2 border-t border-[var(--border-subtle)] text-xs font-mono">
+                              <div>
+                                <span className="text-[10px] text-[var(--text-muted)] block">Txn Volume</span>
+                                <span className="font-bold text-[var(--text-primary)]">
+                                  ₹{m.volume.toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-[10px] text-[var(--text-muted)] block">Critical</span>
+                                <span className={`font-bold ${m.critical > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                  {m.critical} Alerts
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-root)] p-4 text-xs">
+                      <div className="text-xs font-bold text-[var(--text-primary)] flex items-center justify-between">
+                        <span>Connected Banking Nodes &amp; Inter-Bank Routing</span>
+                        <span className="text-[10px] font-mono text-emerald-500">Secure TLS Mesh</span>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between text-center gap-2">
+                        <div className="flex-1 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                          <div className="font-bold text-blue-600 dark:text-blue-400">Bank Alpha</div>
+                          <div className="text-[10px] text-[var(--text-muted)] font-mono">Priya (C1001)</div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-[var(--text-muted)] shrink-0" />
+                        <div className="flex-1 p-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                          <div className="font-bold text-purple-600 dark:text-purple-400">Bank Nova</div>
+                          <div className="text-[10px] text-[var(--text-muted)] font-mono">Rohan (C1002)</div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-[var(--text-muted)] shrink-0" />
+                        <div className="flex-1 p-2 rounded-lg bg-teal-500/10 border border-teal-500/20">
+                          <div className="font-bold text-teal-600 dark:text-teal-400">Bank Horizon</div>
+                          <div className="text-[10px] text-[var(--text-muted)] font-mono">Neha (C1008)</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ─── TAB 2: ENTITY RELATIONSHIP GRAPH ───────────────────── */}
+                {centerTab === 'graph' && (
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-root)] p-5 min-h-[300px] flex flex-col justify-center">
+                    <div className="text-xs font-bold text-[var(--text-primary)] mb-3 flex items-center justify-between">
+                      <span>Entity Correlator Graph</span>
+                      <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                        Subject: {selectedTxn ? selectedTxn.customerName : 'C1003 Attacker'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 font-mono text-xs">
+                      <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-500/5">
+                        <div className="flex items-center gap-1.5 text-blue-500 font-bold text-[11px]">
+                          <User className="h-3.5 w-3.5" /> Customer Node
+                        </div>
+                        <div className="mt-1 font-bold text-[var(--text-primary)]">
+                          {selectedTxn?.customerName || 'Vikram Malhotra'}
+                        </div>
+                        <div className="text-[10px] text-[var(--text-muted)]">
+                          ID: {selectedTxn?.customer_id || 'C1003'}
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg border border-purple-500/30 bg-purple-500/5">
+                        <div className="flex items-center gap-1.5 text-purple-500 font-bold text-[11px]">
+                          <CreditCard className="h-3.5 w-3.5" /> Account Node
+                        </div>
+                        <div className="mt-1 font-bold text-[var(--text-primary)]">
+                          {selectedTxn?.account_id || 'ACC-1003-SAV'}
+                        </div>
+                        <div className="text-[10px] text-[var(--text-muted)]">
+                          Bank: {selectedTxn?.bankName || 'Bank Alpha'}
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                        <div className="flex items-center gap-1.5 text-amber-500 font-bold text-[11px]">
+                          <Smartphone className="h-3.5 w-3.5" /> Device Node
+                        </div>
+                        <div className="mt-1 font-bold text-[var(--text-primary)] truncate">
+                          {selectedTxn?.device_id || 'DEV-MOBILE-UNSET'}
+                        </div>
+                        <div className="text-[10px] text-[var(--text-muted)]">
+                          Fingerprint: Verified
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg border border-teal-500/30 bg-teal-500/5">
+                        <div className="flex items-center gap-1.5 text-teal-500 font-bold text-[11px]">
+                          <Store className="h-3.5 w-3.5" /> Merchant Node
+                        </div>
+                        <div className="mt-1 font-bold text-[var(--text-primary)]">
+                          {selectedTxn?.merchant || 'FreshMart'}
+                        </div>
+                        <div className="text-[10px] text-[var(--text-muted)]">
+                          Category: Retail Grocery
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg border border-rose-500/30 bg-rose-500/5">
+                        <div className="flex items-center gap-1.5 text-rose-500 font-bold text-[11px]">
+                          <Globe className="h-3.5 w-3.5" /> Network / IP Node
+                        </div>
+                        <div className="mt-1 font-bold text-[var(--text-primary)]">
+                          {selectedTxn?.ip_address || '122.167.45.12'}
+                        </div>
+                        <div className="text-[10px] text-[var(--text-muted)]">
+                          City: {selectedTxn?.city || 'Bengaluru'}
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg border border-indigo-500/30 bg-indigo-500/5">
+                        <div className="flex items-center gap-1.5 text-indigo-500 font-bold text-[11px]">
+                          <GitMerge className="h-3.5 w-3.5" /> Ring Linkage
+                        </div>
+                        <div className="mt-1 font-bold text-[var(--text-primary)]">
+                          {selectedTxn?.customer_id === 'C1003' ? 'CRITICAL FRAUD RING' : 'Single User'}
+                        </div>
+                        <div className="text-[10px] text-[var(--text-muted)]">
+                          {selectedTxn?.customer_id === 'C1003' ? 'Cross-Bank Velocity' : 'Isolated Session'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ─── TAB 3: FRAUD PROGRESSION CHAIN ─────────────────────── */}
+                {centerTab === 'chain' && (
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-root)] p-5 space-y-4">
+                    <div className="text-xs font-bold text-[var(--text-primary)]">
+                      End-to-End Transaction &amp; Fraud Progression Chain
+                    </div>
+
+                    <div className="flex items-center justify-between text-center gap-2 overflow-x-auto py-2">
+                      <div className="flex-1 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                        <Smartphone className="h-4 w-4 mx-auto text-amber-500 mb-1" />
+                        <div className="text-[10px] font-bold">1. DEVICE</div>
+                        <div className="text-[9px] text-[var(--text-muted)] font-mono truncate">
+                          {selectedTxn?.device_id || 'DEV-MOBILE'}
+                        </div>
+                      </div>
+                      <ArrowRight className="h-3.5 w-3.5 text-[var(--text-muted)] shrink-0" />
+                      <div className="flex-1 p-2 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                        <User className="h-4 w-4 mx-auto text-blue-500 mb-1" />
+                        <div className="text-[10px] font-bold">2. CUSTOMER</div>
+                        <div className="text-[9px] text-[var(--text-muted)] font-mono truncate">
+                          {selectedTxn?.customerName}
+                        </div>
+                      </div>
+                      <ArrowRight className="h-3.5 w-3.5 text-[var(--text-muted)] shrink-0" />
+                      <div className="flex-1 p-2 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                        <CreditCard className="h-4 w-4 mx-auto text-purple-500 mb-1" />
+                        <div className="text-[10px] font-bold">3. ACCOUNT</div>
+                        <div className="text-[9px] text-[var(--text-muted)] font-mono truncate">
+                          {selectedTxn?.account_id}
+                        </div>
+                      </div>
+                      <ArrowRight className="h-3.5 w-3.5 text-[var(--text-muted)] shrink-0" />
+                      <div className="flex-1 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                        <Activity className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
+                        <div className="text-[10px] font-bold">4. PAYMENT</div>
+                        <div className="text-[9px] text-[var(--text-muted)] font-mono truncate font-bold">
+                          ₹{selectedTxn?.amount.toLocaleString('en-IN')}
+                        </div>
+                      </div>
+                      <ArrowRight className="h-3.5 w-3.5 text-[var(--text-muted)] shrink-0" />
+                      <div className="flex-1 p-2 rounded-lg bg-rose-500/10 border border-rose-500/30">
+                        <ShieldAlert className="h-4 w-4 mx-auto text-rose-500 mb-1" />
+                        <div className="text-[10px] font-bold">5. DECISION</div>
+                        <div className="text-[9px] text-rose-500 font-mono truncate font-bold">
+                          {selectedTxn?.decision || 'EVALUATED'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ─── CONNECTED DEVICES MONITORING PANEL ──────────────────────── */}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 shadow-xs">
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="h-4 w-4 text-blue-500" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                    Active Phone Fleet &amp; SOC Session Registry
+                  </h3>
+                </div>
+                <span className="font-mono text-[10px] font-bold text-emerald-500">
+                  {connectedDevices.length} Registry Entries
+                </span>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {connectedDevices.length === 0 ? (
+                  <div className="col-span-2 text-center py-6 text-xs text-[var(--text-muted)]">
+                    No physical phones registered yet.
+                  </div>
+                ) : (
+                  connectedDevices.map((dev) => {
+                    const isOnline = dev.status === 'ONLINE';
+                    return (
+                      <div
+                        key={dev.device_id}
+                        className="p-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-root)] flex items-center justify-between text-xs"
+                      >
+                        <div className="truncate mr-2">
+                          <div className="flex items-center gap-1.5 font-bold text-[var(--text-primary)]">
+                            <span className="truncate">{dev.device_id}</span>
+                            <span className="text-[9px] px-1 py-0.2 rounded font-mono bg-blue-500/10 text-blue-600">
+                              {dev.role || 'CUSTOMER'}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-[var(--text-muted)] font-mono truncate">
+                            {dev.customer_id ? `Customer: ${dev.customer_id}` : 'Unauthenticated'} • {dev.bank || 'ALPHA'}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span
+                            className={`h-2 w-2 rounded-full ${
+                              isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                            }`}
+                          />
+                          <span
+                            className={`text-[10px] font-bold font-mono ${
+                              isOnline ? 'text-emerald-500' : 'text-slate-400'
+                            }`}
+                          >
+                            {dev.status || 'ONLINE'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        {/* 5. 11-AGENT INVESTIGATION WORKSPACE PANEL (ACTIVATED ON DEMAND)     */}
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        {investigationResults && (
+          <div className="rounded-2xl border-2 border-indigo-500/40 bg-[var(--bg-surface)] p-5 shadow-xl space-y-4 animate-in fade-in duration-300">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-indigo-600 text-white shadow-md">
+                  <Cpu className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                    11-Agent Autonomous Investigation Pipeline Result
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    Transaction ID: <span className="font-mono text-indigo-500 font-bold">{investigationResults.txnId}</span> • Verdict: <span className="font-bold text-rose-500">{investigationResults.investigation.summary?.verdict || investigationResults.riskResult.summary}</span>
+                  </p>
+                </div>
+              </div>
+
+              {investigationResults.caseCreated && (
+                <div className="flex items-center gap-2 rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1.5">
+                  <FolderKanban className="h-4 w-4 text-purple-600" />
+                  <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400">
+                    Case #{investigationResults.caseCreated.caseNumber} Auto-Created
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 11 Agents Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {investigationResults.agentResults.map((agent, i) => {
+                const meta = AGENT_METAS.find((m) => m.name.toLowerCase() === agent.agent_name.toLowerCase()) || AGENT_METAS[0];
+                const Icon = meta.icon;
+
+                return (
+                  <div
+                    key={i}
+                    className="p-3.5 rounded-xl border border-[var(--border)] bg-[var(--bg-root)] space-y-2 shadow-xs hover:border-[var(--border-strong)] transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="p-1 rounded-md"
+                          style={{ backgroundColor: `${meta.accentColor}20`, color: meta.accentColor }}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                        </div>
+                        <span className="text-xs font-bold text-[var(--text-primary)]">
+                          {agent.agent_name} Agent
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded font-bold bg-blue-500/10 text-blue-600">
+                        Stage {String(i + 1).padStart(2, '0')}
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                      {agent.summary}
+                    </p>
+
+                    {agent.evidence && agent.evidence.length > 0 && (
+                      <div className="pt-2 border-t border-[var(--border-subtle)] text-[10px] text-[var(--text-muted)] font-mono">
+                        <span className="font-bold text-[var(--text-secondary)]">Evidence:</span> {agent.evidence[0]}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        {/* 6. OPEN CASES & AUDIT LOGS BOTTOM MONITOR                           */}
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Active Cases */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 shadow-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2">
+                <FolderKanban className="h-4 w-4 text-purple-500" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                  Active Fraud Cases (Firestore /cases)
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-[var(--text-muted)]">
+                {activeCases.length} Registered
+              </span>
+            </div>
+
+            <div className="mt-3 space-y-2 max-h-[220px] overflow-y-auto">
+              {activeCases.length === 0 ? (
+                <div className="text-center py-8 text-xs text-[var(--text-muted)]">
+                  No fraud cases created yet. High-risk transactions will auto-escalate here.
+                </div>
+              ) : (
+                activeCases.map((c) => (
+                  <div
+                    key={c.id}
+                    className="p-3 rounded-lg border border-[var(--border)] bg-[var(--bg-root)] flex items-center justify-between text-xs"
+                  >
+                    <div>
+                      <div className="font-mono font-bold text-[var(--text-primary)]">
+                        {c.caseNumber || c.id}
+                      </div>
+                      <div className="text-[10px] text-[var(--text-muted)] font-mono">
+                        Customer: {c.customerId} • Txn: {c.transactionId}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-600 font-mono">
+                        {c.riskLevel || 'CRITICAL'} ({c.riskScore || 90} pts)
+                      </span>
+                      <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                        {c.status || 'INVESTIGATING'}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Audit Logs Trail */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 shadow-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-blue-500" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                  Append-Only Audit Trail (Firestore /audit_logs)
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-[var(--text-muted)]">
+                Immutable Ledger
+              </span>
+            </div>
+
+            <div className="mt-3 space-y-2 max-h-[220px] overflow-y-auto">
+              {recentAuditLogs.length === 0 ? (
+                <div className="text-center py-8 text-xs text-[var(--text-muted)]">
+                  Audit events will stream here automatically.
+                </div>
+              ) : (
+                recentAuditLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="p-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-root)] flex items-center justify-between text-xs font-mono"
+                  >
+                    <div>
+                      <span className="font-bold text-blue-600 dark:text-blue-400">
+                        {log.action}
+                      </span>
+                      <span className="text-[10px] text-[var(--text-muted)] ml-2">
+                        [{log.objectType}: {log.objectId}]
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[var(--text-muted)]">
+                      {new Date(log.createdAt).toLocaleTimeString('en-IN', { hour12: false })}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

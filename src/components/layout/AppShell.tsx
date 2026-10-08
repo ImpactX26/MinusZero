@@ -14,44 +14,36 @@ import { Analytics } from '../../pages/Analytics';
 import { Settings } from '../../pages/Settings';
 import { InvestigationWorkspace } from '../../pages/InvestigationWorkspace';
 import { MultiBankSimulation } from '../../pages/MultiBankSimulation';
+import { DeviceFoundationView } from '../../pages/DeviceFoundationView';
+
+function parseHashTab(rawHash: string): NavigationTab {
+  const cleaned = rawHash.replace(/^#\/?/, '').split('?')[0].toLowerCase() as NavigationTab;
+  const validTabs: NavigationTab[] = [
+    'command-center',
+    'live-events',
+    'simulation',
+    'investigations',
+    'cases',
+    'customers',
+    'entity-graph',
+    'analytics',
+    'settings',
+    'investigation-workspace',
+    'device',
+    'soc',
+  ];
+  return validTabs.includes(cleaned) ? cleaned : 'command-center';
+}
 
 export const AppShell: React.FC = () => {
-  // Sync tab with URL hash if available
+  // Sync tab with URL hash if available (normalizing #/device and #/soc)
   const [activeTab, setActiveTab] = useState<NavigationTab>(() => {
-    const hash = window.location.hash.replace('#', '') as NavigationTab;
-    const validTabs: NavigationTab[] = [
-      'command-center',
-      'live-events',
-      'simulation',
-      'investigations',
-      'cases',
-      'customers',
-      'entity-graph',
-      'analytics',
-      'settings',
-      'investigation-workspace'
-    ];
-    return validTabs.includes(hash) ? hash : 'command-center';
+    return parseHashTab(window.location.hash);
   });
 
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '') as NavigationTab;
-      const validTabs: NavigationTab[] = [
-        'command-center',
-        'live-events',
-        'simulation',
-        'investigations',
-        'cases',
-        'customers',
-        'entity-graph',
-        'analytics',
-        'settings',
-        'investigation-workspace'
-      ];
-      if (validTabs.includes(hash)) {
-        setActiveTab(hash);
-      }
+      setActiveTab(parseHashTab(window.location.hash));
     };
 
     window.addEventListener('hashchange', handleHashChange);
@@ -66,7 +58,10 @@ export const AppShell: React.FC = () => {
   const renderActivePage = () => {
     switch (activeTab) {
       case 'command-center':
+      case 'soc':
         return <CommandCenter />;
+      case 'device':
+        return <DeviceFoundationView />;
       case 'live-events':
         return <LiveEvents />;
       case 'simulation':
@@ -90,23 +85,27 @@ export const AppShell: React.FC = () => {
     }
   };
 
+  const isDeviceMode = activeTab === 'device';
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-root)] text-[var(--text-primary)] transition-colors duration-200">
-      <Topbar />
+      {!isDeviceMode && <Topbar />}
 
       {/* Sub-header navigation strip */}
-      <div className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 sm:px-6 py-1.5 shadow-xs">
-        <div className="mx-auto max-w-7xl">
-          <Navigation activeTab={activeTab} onSelectTab={handleSelectTab} />
+      {!isDeviceMode && (
+        <div className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 sm:px-6 py-1.5 shadow-xs">
+          <div className="mx-auto max-w-7xl">
+            <Navigation activeTab={activeTab} onSelectTab={handleSelectTab} />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main page content area */}
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
+      <main className={`flex-1 mx-auto w-full ${isDeviceMode ? 'max-w-md p-3 sm:py-6' : 'max-w-7xl px-4 sm:px-6 py-6 sm:py-8'}`}>
         {renderActivePage()}
       </main>
 
-      <Footer />
+      {!isDeviceMode && <Footer />}
     </div>
   );
 };

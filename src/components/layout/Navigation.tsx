@@ -21,7 +21,9 @@ export type NavigationTab =
   | 'entity-graph'
   | 'analytics'
   | 'settings'
-  | 'investigation-workspace';
+  | 'investigation-workspace'
+  | 'device'
+  | 'soc';
 
 interface NavigationProps {
   activeTab: NavigationTab;
@@ -35,7 +37,7 @@ interface NavItem {
 }
 
 export const navItems: NavItem[] = [
-  { id: 'command-center', label: 'Command Center', icon: LayoutDashboard },
+  { id: 'command-center', label: 'SOC Command Center', icon: LayoutDashboard },
   { id: 'live-events', label: 'Live Events', icon: Activity },
   { id: 'simulation', label: 'Simulation', icon: Zap },
   { id: 'investigations', label: 'Investigations', icon: Search },
@@ -51,7 +53,10 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onSelectTab }
     <nav className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none">
       {navItems.map((item) => {
         const Icon = item.icon;
-        const isActive = activeTab === item.id || (item.id === 'investigations' && activeTab === 'investigation-workspace');
+        const isActive =
+          activeTab === item.id ||
+          (item.id === 'command-center' && activeTab === 'soc') ||
+          (item.id === 'investigations' && activeTab === 'investigation-workspace');
         return (
           <button
             key={item.id}
