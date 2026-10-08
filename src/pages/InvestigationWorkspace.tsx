@@ -51,6 +51,7 @@ import {
   runNarrator
 } from '../investigation/agents';
 import { AgentResult, Case, AuditLog, DecisionAction, NetworkSignal } from '../types';
+import { useTheme } from '../context/ThemeContext';
 
 // Safe string formatter ensuring zero 'undefined', 'null', or 'NaN' in UI
 const safeString = (val: any, fallback: string = 'Detected'): string => {
@@ -92,6 +93,7 @@ export const AGENT_METAS: AgentMeta[] = [
 ];
 
 export const InvestigationWorkspace: React.FC = () => {
+  const { resolvedTheme } = useTheme();
   // Read active scenario key from sessionStorage or fallback to high_risk_c1003
   const [activeScenarioKey, setActiveScenarioKey] = useState<string>(() => {
     return sessionStorage.getItem('finguard_active_scenario') || 'high_risk_c1003';
@@ -889,20 +891,20 @@ export const InvestigationWorkspace: React.FC = () => {
   return (
     <div className="flex flex-col min-h-[calc(100vh-8.5rem)] space-y-4">
       {/* ─── 1. HERO HEADER ──────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-[#DCE3EE] shadow-xs p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF2FF] border border-[#C7D2FE] text-[#3157D5] shadow-xs shrink-0">
-            <ShieldAlert className="h-6 w-6 text-[#3157D5]" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/20 text-[var(--primary)] shadow-xs shrink-0">
+            <ShieldAlert className="h-6 w-6 text-[var(--primary)]" />
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-base font-extrabold text-[#172033] tracking-tight uppercase">
+              <h1 className="text-base font-extrabold text-[var(--text-primary)] tracking-tight uppercase">
                 AUTONOMOUS INVESTIGATION COCKPIT
               </h1>
-              <span className="badge text-[10px] font-bold bg-[#FFF1F2] text-[#D95C62] border border-[#FFE4E6]">
+              <span className="badge text-[10px] font-bold bg-rose-500/10 text-[var(--danger)] border border-rose-500/20">
                 LIVE INVESTIGATION
               </span>
-              <span className="badge text-[10px] font-bold bg-[#EEF2FF] text-[#3157D5] border border-[#C7D2FE]">
+              <span className="badge text-[10px] font-bold bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20">
                 {simulatedEvent ? `${simulatedEvent.bankName || 'SIMULATED'} · ${simulatedEvent.attackType?.replace(/_/g, ' ') || 'TRANSACTION'}` : (scenario.name.split(':')[0] || 'SCENARIO C')}
               </span>
               {simulatedEvent && (
@@ -913,49 +915,49 @@ export const InvestigationWorkspace: React.FC = () => {
                     setSimulatedEvent(null);
                     setActiveScenarioKey('high_risk_c1003');
                   }}
-                  className="text-[10px] font-semibold text-[#3157D5] hover:underline cursor-pointer bg-white px-2 py-0.5 rounded border border-[#C7D2FE]"
+                  className="text-[10px] font-semibold text-[var(--primary)] hover:underline cursor-pointer bg-[var(--surface)] px-2 py-0.5 rounded border border-[var(--border)]"
                 >
                   Return to Scenario C
                 </button>
               )}
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#F0FDF4] border border-[#BBF7D0] text-[#159A75] text-[10px] font-semibold">
-                <span className="h-2 w-2 rounded-full bg-[#159A75] animate-pulse" />
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[var(--success)] text-[10px] font-semibold">
+                <span className="h-2 w-2 rounded-full bg-[var(--success)] animate-pulse" />
                 <span>INVESTIGATION ACTIVE</span>
               </div>
             </div>
-            <p className="text-xs text-[#64748B] mt-0.5">
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5">
               Deterministic 11-agent orchestration · Multi-dimensional evidence correlation · High-impact human decision gate
             </p>
           </div>
         </div>
 
         {/* Key Facts HUD Bar */}
-        <div className="flex flex-wrap items-center gap-3 text-xs font-mono bg-[#F8FAFD] px-3.5 py-2 rounded-lg border border-[#DCE3EE]">
+        <div className="flex flex-wrap items-center gap-3 text-xs font-mono bg-[var(--surface-muted)] px-3.5 py-2 rounded-lg border border-[var(--border)]">
           <div className="flex items-center gap-1.5">
-            <span className="text-[#64748B]">Target:</span>
-            <span className="font-bold text-[#172033]">{input.customer.name} · {input.customer.customer_id}</span>
+            <span className="text-[var(--text-secondary)]">Target:</span>
+            <span className="font-bold text-[var(--text-primary)]">{input.customer.name} · {input.customer.customer_id}</span>
           </div>
-          <span className="text-[#CBD5E1] hidden sm:inline">•</span>
+          <span className="text-[var(--border-strong)] hidden sm:inline">•</span>
           <div className="flex items-center gap-1.5">
-            <span className="text-[#64748B]">Transaction:</span>
-            <span className="font-semibold text-[#3157D5]">{input.transaction.transaction_id}</span>
+            <span className="text-[var(--text-secondary)]">Transaction:</span>
+            <span className="font-semibold text-[var(--primary)]">{input.transaction.transaction_id}</span>
           </div>
-          <span className="text-[#CBD5E1] hidden sm:inline">•</span>
+          <span className="text-[var(--border-strong)] hidden sm:inline">•</span>
           <div className="flex items-center gap-1.5">
-            <span className="text-[#64748B]">Amount:</span>
-            <span className="font-extrabold text-[#172033]">₹{input.transaction.amount?.toLocaleString()}</span>
+            <span className="text-[var(--text-secondary)]">Amount:</span>
+            <span className="font-extrabold text-[var(--text-primary)]">₹{input.transaction.amount?.toLocaleString()}</span>
           </div>
-          <span className="text-[#CBD5E1] hidden sm:inline">•</span>
+          <span className="text-[var(--border-strong)] hidden sm:inline">•</span>
           <div className="flex items-center gap-1.5">
-            <span className="text-[#64748B]">Risk:</span>
-            <span className="px-1.5 py-0.5 rounded font-bold text-[10px] bg-[#FFF1F2] text-[#D95C62] border border-[#FFE4E6]">
+            <span className="text-[var(--text-secondary)]">Risk:</span>
+            <span className="px-1.5 py-0.5 rounded font-bold text-[10px] bg-rose-500/10 text-[var(--danger)] border border-rose-500/20">
               {riskResult.riskLevel}
             </span>
           </div>
-          <span className="text-[#CBD5E1] hidden sm:inline">•</span>
+          <span className="text-[var(--border-strong)] hidden sm:inline">•</span>
           <div className="flex items-center gap-1.5">
-            <span className="text-[#64748B]">Decision:</span>
-            <span className="font-bold text-[#D95C62] text-[11px]">
+            <span className="text-[var(--text-secondary)]">Decision:</span>
+            <span className="font-bold text-[var(--danger)] text-[11px]">
               {riskResult.decision.replace(/_/g, ' ')}
             </span>
           </div>
@@ -964,16 +966,16 @@ export const InvestigationWorkspace: React.FC = () => {
 
       {/* Case Creation Success Notification Banner */}
       {createdCaseId && (
-        <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl p-3 px-4 flex items-center justify-between shadow-xs animate-in fade-in duration-200">
-          <div className="flex items-center gap-2.5 text-xs text-[#159A75] font-semibold">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-[#159A75]" />
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 px-4 flex items-center justify-between shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5 text-xs text-[var(--success)] font-semibold">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--success)]" />
             <span>
               Authoritative Case <strong>{createdCaseId}</strong> established in ledger. Investigation snapshot, 11-agent claims, and cryptographic evidence matrix logged.
             </span>
           </div>
           <a
             href="#cases"
-            className="text-xs font-bold text-[#159A75] hover:text-[#0D5C46] flex items-center gap-1 underline underline-offset-2 ml-4 shrink-0"
+            className="text-xs font-bold text-[var(--success)] hover:underline flex items-center gap-1 ml-4 shrink-0"
           >
             <span>Open Case File</span>
             <ChevronRight className="h-3.5 w-3.5" />
@@ -986,17 +988,17 @@ export const InvestigationWorkspace: React.FC = () => {
         
         {/* ─── LEFT COLUMN: AI INVESTIGATION BRIEF (LG: col-span-3) ──────────── */}
         <div className="lg:col-span-3 flex flex-col gap-3.5 lg:sticky lg:top-4 self-start">
-          <div className="bg-white rounded-xl border border-[#DCE3EE] shadow-xs p-4 flex flex-col gap-3.5">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs p-4 flex flex-col gap-3.5">
             
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[#DCE3EE] pb-2">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
               <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-[#3157D5]" />
-                <h2 className="text-xs font-bold uppercase tracking-wider text-[#172033]">
+                <Shield className="h-4 w-4 text-[var(--primary)]" />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                   AI Investigation Brief
                 </h2>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#EEF2FF] text-[#3157D5] font-semibold">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)] font-semibold">
                 Autonomous
               </span>
             </div>
@@ -1005,15 +1007,15 @@ export const InvestigationWorkspace: React.FC = () => {
             <div
               onMouseEnter={() => setIsGaugeHovered(true)}
               onMouseLeave={() => setIsGaugeHovered(false)}
-              className="p-3.5 rounded-xl border border-[#DCE3EE] bg-gradient-to-br from-white via-[#F8FAFD] to-white shadow-xs flex flex-col items-center relative overflow-hidden transition-all cursor-pointer group"
+              className="p-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] shadow-xs flex flex-col items-center relative overflow-hidden transition-all cursor-pointer group"
             >
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#D95C62] via-[#E06A3B] to-[#D99425]" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-500" />
               
               <div className="w-full flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                   Composite Risk Score
                 </span>
-                <span className="badge text-[10px] font-bold bg-[#FFF1F2] text-[#D95C62] border border-[#FFE4E6]">
+                <span className="badge text-[10px] font-bold bg-rose-500/10 text-[var(--danger)] border border-rose-500/20">
                   {riskResult.riskLevel}
                 </span>
               </div>
@@ -1025,7 +1027,7 @@ export const InvestigationWorkspace: React.FC = () => {
                     cx="48"
                     cy="48"
                     r={circleRadius}
-                    className="stroke-[#E2E8F0]"
+                    className="stroke-[var(--border-strong)]"
                     strokeWidth="7"
                     fill="transparent"
                   />
@@ -1033,7 +1035,7 @@ export const InvestigationWorkspace: React.FC = () => {
                     cx="48"
                     cy="48"
                     r={circleRadius}
-                    className="stroke-[#D95C62] transition-all duration-1000 ease-out"
+                    className="stroke-[var(--danger)] transition-all duration-1000 ease-out"
                     strokeWidth="7"
                     strokeDasharray={circumference}
                     strokeDashoffset={strokeDashoffset}
@@ -1042,41 +1044,41 @@ export const InvestigationWorkspace: React.FC = () => {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-black font-mono text-[#172033] tracking-tighter leading-none">
+                  <span className="text-2xl font-black font-mono text-[var(--text-primary)] tracking-tighter leading-none">
                     {riskResult.riskScore}
                   </span>
-                  <span className="text-[10px] font-mono text-[#64748B] font-semibold mt-0.5">
+                  <span className="text-[10px] font-mono text-[var(--text-secondary)] font-semibold mt-0.5">
                     / 100
                   </span>
                 </div>
               </div>
 
               <div className="text-center mt-0.5">
-                <div className="text-xs font-bold text-[#D95C62] uppercase tracking-wide">
+                <div className="text-xs font-bold text-[var(--danger)] uppercase tracking-wide">
                   {riskResult.riskLevel} RISK
                 </div>
-                <div className="text-[11px] text-[#64748B] font-medium">
+                <div className="text-[11px] text-[var(--text-secondary)] font-medium">
                   {riskResult.triggeredSignals.length} correlated signals · High confidence
                 </div>
               </div>
 
               {/* Hover Score Composition Overlay */}
               {isGaugeHovered && (
-                <div className="absolute inset-0 bg-white/95 backdrop-blur-xs p-3 flex flex-col justify-between text-xs animate-in fade-in duration-150 z-20">
-                  <div className="border-b border-[#E2E8F0] pb-1 flex items-center justify-between">
-                    <span className="font-extrabold text-[10px] uppercase text-[#172033]">Score Composition</span>
-                    <span className="font-mono font-bold text-[#D95C62]">{riskResult.riskScore}/100</span>
+                <div className="absolute inset-0 bg-[var(--surface)]/95 backdrop-blur-xs p-3 flex flex-col justify-between text-xs animate-in fade-in duration-150 z-20 border border-[var(--border)]">
+                  <div className="border-b border-[var(--border)] pb-1 flex items-center justify-between">
+                    <span className="font-extrabold text-[10px] uppercase text-[var(--text-primary)]">Score Composition</span>
+                    <span className="font-mono font-bold text-[var(--danger)]">{riskResult.riskScore}/100</span>
                   </div>
-                  <div className="space-y-1 font-mono text-[10px] py-1 text-[#475569]">
-                    <div className="flex justify-between"><span>Amount Deviation</span><span className="font-bold text-[#D95C62]">+20 pts</span></div>
-                    <div className="flex justify-between"><span>Failed Logins</span><span className="font-bold text-[#D95C62]">+20 pts</span></div>
-                    <div className="flex justify-between"><span>Impossible Travel</span><span className="font-bold text-[#D95C62]">+20 pts</span></div>
-                    <div className="flex justify-between"><span>Rogue Device</span><span className="font-bold text-[#D95C62]">+15 pts</span></div>
-                    <div className="flex justify-between"><span>Proxy Network</span><span className="font-bold text-[#D95C62]">+15 pts</span></div>
-                    <div className="flex justify-between"><span>Unusual Hour</span><span className="font-bold text-[#D95C62]">+10 pts</span></div>
-                    <div className="flex justify-between"><span>New Location</span><span className="font-bold text-[#D95C62]">+5 pts</span></div>
+                  <div className="space-y-1 font-mono text-[10px] py-1 text-[var(--text-secondary)]">
+                    <div className="flex justify-between"><span>Amount Deviation</span><span className="font-bold text-[var(--danger)]">+20 pts</span></div>
+                    <div className="flex justify-between"><span>Failed Logins</span><span className="font-bold text-[var(--danger)]">+20 pts</span></div>
+                    <div className="flex justify-between"><span>Impossible Travel</span><span className="font-bold text-[var(--danger)]">+20 pts</span></div>
+                    <div className="flex justify-between"><span>Rogue Device</span><span className="font-bold text-[var(--danger)]">+15 pts</span></div>
+                    <div className="flex justify-between"><span>Proxy Network</span><span className="font-bold text-[var(--danger)]">+15 pts</span></div>
+                    <div className="flex justify-between"><span>Unusual Hour</span><span className="font-bold text-[var(--danger)]">+10 pts</span></div>
+                    <div className="flex justify-between"><span>New Location</span><span className="font-bold text-[var(--danger)]">+5 pts</span></div>
                   </div>
-                  <div className="text-[9px] text-[#64748B] border-t border-[#E2E8F0] pt-1">
+                  <div className="text-[9px] text-[var(--text-muted)] border-t border-[var(--border)] pt-1">
                     Capped at 100/100 · Critical Ceiling
                   </div>
                 </div>
@@ -1084,26 +1086,26 @@ export const InvestigationWorkspace: React.FC = () => {
             </div>
 
             {/* Decision Block */}
-            <div className="p-3 rounded-xl border border-[#DCE3EE] bg-[#F8FAFD] space-y-1.5">
+            <div className="p-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                   Autonomous Decision
                 </span>
-                <span className="text-[10px] font-mono font-bold text-[#159A75] flex items-center gap-1">
+                <span className="text-[10px] font-mono font-bold text-[var(--success)] flex items-center gap-1">
                   <CheckCircle2 className="h-3 w-3" /> 95.0% Conf
                 </span>
               </div>
-              <div className="p-2 rounded-lg bg-white border border-[#FFE4E6] flex items-center justify-between">
-                <span className="text-xs font-extrabold text-[#D95C62] font-mono">
+              <div className="p-2 rounded-lg bg-[var(--surface)] border border-rose-500/20 flex items-center justify-between">
+                <span className="text-xs font-extrabold text-[var(--danger)] font-mono">
                   {riskResult.decision.replace(/_/g, ' ')}
                 </span>
-                <span className="h-2 w-2 rounded-full bg-[#D95C62]" />
+                <span className="h-2 w-2 rounded-full bg-[var(--danger)]" />
               </div>
-              <div className="text-[11px] text-[#64748B] flex items-center justify-between">
+              <div className="text-[11px] text-[var(--text-secondary)] flex items-center justify-between">
                 <span>Decision basis:</span>
-                <span className="font-semibold text-[#172033]">{riskResult.triggeredSignals.length} correlated signals</span>
+                <span className="font-semibold text-[var(--text-primary)]">{riskResult.triggeredSignals.length} correlated signals</span>
               </div>
-              <div className="pt-1.5 border-t border-[#E2E8F0] flex items-center gap-1.5 text-[10px] text-[#B7791F]">
+              <div className="pt-1.5 border-t border-[var(--border)] flex items-center gap-1.5 text-[10px] text-[var(--warning)]">
                 <Lock className="h-3 w-3 shrink-0" />
                 <span>Human confirmation required for execution</span>
               </div>
@@ -1112,10 +1114,10 @@ export const InvestigationWorkspace: React.FC = () => {
             {/* Top Signals with Direct Agent Selection */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#172033]">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-primary)]">
                   Top Correlated Signals
                 </span>
-                <span className="text-[10px] font-mono text-[#D95C62] font-bold">{riskResult.triggeredSignals.length} Triggered</span>
+                <span className="text-[10px] font-mono text-[var(--danger)] font-bold">{riskResult.triggeredSignals.length} Triggered</span>
               </div>
               <div className="space-y-1">
                 {topSignals.map((sig) => {
@@ -1126,22 +1128,22 @@ export const InvestigationWorkspace: React.FC = () => {
                       onClick={() => setSelectedAgentName(sig.agent)}
                       className={`w-full p-2 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                         isSelected
-                          ? 'border-[#3157D5] bg-[#EEF2FF] shadow-xs'
-                          : 'border-[#DCE3EE] bg-white hover:border-[#CBD5E1] hover:bg-[#F8FAFD]'
+                          ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-xs'
+                          : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)]'
                       }`}
                       title={`Click to focus ${sig.agent} Agent in topology`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="h-2 w-2 rounded-full bg-[#D95C62] shrink-0" />
+                        <span className="h-2 w-2 rounded-full bg-[var(--danger)] shrink-0" />
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-xs font-bold text-[#172033]">{sig.label}</span>
-                            <span className="text-[10px] text-[#3157D5] font-semibold">→ {sig.agent}</span>
+                            <span className="font-mono text-xs font-bold text-[var(--text-primary)]">{sig.label}</span>
+                            <span className="text-[10px] text-[var(--primary)] font-semibold">→ {sig.agent}</span>
                           </div>
-                          <div className="text-[10px] text-[#64748B] truncate">{sig.desc}</div>
+                          <div className="text-[10px] text-[var(--text-secondary)] truncate">{sig.desc}</div>
                         </div>
                       </div>
-                      <span className="font-mono text-xs font-extrabold text-[#D95C62] shrink-0 ml-2">
+                      <span className="font-mono text-xs font-extrabold text-[var(--danger)] shrink-0 ml-2">
                         +{sig.points}
                       </span>
                     </button>
@@ -1151,51 +1153,51 @@ export const InvestigationWorkspace: React.FC = () => {
             </div>
 
             {/* AI Challenger Hypothesis */}
-            <div className="space-y-1.5 pt-1 border-t border-[#DCE3EE]">
+            <div className="space-y-1.5 pt-1 border-t border-[var(--border)]">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#172033]">
-                  <Scale className="h-3.5 w-3.5 text-[#D97706]" />
+                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                  <Scale className="h-3.5 w-3.5 text-amber-500" />
                   <span>Exoneration Challenge</span>
                 </div>
                 <button
                   onClick={() => setSelectedAgentName('Challenger')}
-                  className="text-[10px] font-bold text-[#3157D5] hover:underline cursor-pointer"
+                  className="text-[10px] font-bold text-[var(--primary)] hover:underline cursor-pointer"
                 >
                   Agent 09
                 </button>
               </div>
-              <div className="p-2.5 rounded-lg border border-[#DCE3EE] bg-white text-xs space-y-1.5">
-                <p className="italic text-[11px] text-[#475569] leading-relaxed">
+              <div className="p-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-xs space-y-1.5">
+                <p className="italic text-[11px] text-[var(--text-secondary)] leading-relaxed">
                   "{challenger.summary || 'Customer may be travelling with a newly purchased secondary device.'}"
                 </p>
-                <div className="p-1.5 rounded bg-[#FFF1F2] border border-[#FFE4E6] text-[10px] text-[#D95C62] font-semibold">
+                <div className="p-1.5 rounded bg-rose-500/10 border border-rose-500/20 text-[10px] text-[var(--danger)] font-semibold">
                   Exoneration rejected: 840 km in 4m violates physical flight velocity laws.
                 </div>
               </div>
             </div>
 
             {/* AI Narrator Summary */}
-            <div className="space-y-1.5 pt-1 border-t border-[#DCE3EE]">
+            <div className="space-y-1.5 pt-1 border-t border-[var(--border)]">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#172033]">
-                  <FileText className="h-3.5 w-3.5 text-[#3157D5]" />
+                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                  <FileText className="h-3.5 w-3.5 text-[var(--primary)]" />
                   <span>Investigator Summary</span>
                 </div>
                 <button
                   onClick={() => setShowFullNarrative(!showFullNarrative)}
-                  className="text-[10px] font-bold text-[#3157D5] hover:underline cursor-pointer"
+                  className="text-[10px] font-bold text-[var(--primary)] hover:underline cursor-pointer"
                 >
                   {showFullNarrative ? 'Collapse' : 'View reasoning'}
                 </button>
               </div>
-              <div className="p-2.5 rounded-lg border border-[#DCE3EE] bg-[#F8FAFD] text-xs leading-relaxed text-[#172033]">
+              <div className="p-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] text-xs leading-relaxed text-[var(--text-primary)]">
                 <p>
                   Multiple independent signals converge on a high-confidence account takeover pattern. Unregistered hardware DEV-1003-ROGUE executed an out-of-hours ₹85,000 transfer after a credential failure burst.
                 </p>
                 {showFullNarrative && (
-                  <div className="mt-2 pt-2 border-t border-[#DCE3EE] text-[11px] text-[#475569] space-y-1 animate-in fade-in duration-200">
+                  <div className="mt-2 pt-2 border-t border-[var(--border)] text-[11px] text-[var(--text-secondary)] space-y-1 animate-in fade-in duration-200">
                     <p>{narrator.summary}</p>
-                    <div className="font-mono text-[10px] text-[#159A75] bg-white p-1 rounded border border-[#DCE3EE]">
+                    <div className="font-mono text-[10px] text-[var(--success)] bg-[var(--surface)] p-1 rounded border border-[var(--border)]">
                       ✓ Corroborated by Verifier Agent: 11 of 11 claims verified.
                     </div>
                   </div>
@@ -1211,52 +1213,52 @@ export const InvestigationWorkspace: React.FC = () => {
           
           {/* Summary Metric Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="bg-white rounded-xl p-3 border border-[#DCE3EE] shadow-xs flex flex-col justify-between">
-              <span className="text-[10px] font-bold uppercase text-[#64748B]">Investigation Pipeline</span>
+            <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] shadow-xs flex flex-col justify-between">
+              <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)]">Investigation Pipeline</span>
               <div className="flex items-center justify-between mt-1">
-                <span className="text-base font-extrabold font-mono text-[#172033]">11 Agents</span>
-                <span className="badge text-[9px] font-bold bg-[#F0FDF4] text-[#159A75] border border-[#BBF7D0]">COMPLETE</span>
+                <span className="text-base font-extrabold font-mono text-[var(--text-primary)]">11 Agents</span>
+                <span className="badge text-[9px] font-bold bg-emerald-500/10 text-[var(--success)] border border-emerald-500/20">COMPLETE</span>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-3 border border-[#DCE3EE] shadow-xs flex flex-col justify-between">
-              <span className="text-[10px] font-bold uppercase text-[#64748B]">Correlated Signals</span>
+            <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] shadow-xs flex flex-col justify-between">
+              <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)]">Correlated Signals</span>
               <div className="flex items-center justify-between mt-1">
-                <span className="text-base font-extrabold font-mono text-[#D95C62]">{riskResult.triggeredSignals.length} Signals</span>
-                <span className="badge text-[9px] font-bold bg-[#FFF1F2] text-[#D95C62] border border-[#FFE4E6]">{riskResult.riskLevel}</span>
+                <span className="text-base font-extrabold font-mono text-[var(--danger)]">{riskResult.triggeredSignals.length} Signals</span>
+                <span className="badge text-[9px] font-bold bg-rose-500/10 text-[var(--danger)] border border-rose-500/20">{riskResult.riskLevel}</span>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-3 border border-[#DCE3EE] shadow-xs flex flex-col justify-between">
-              <span className="text-[10px] font-bold uppercase text-[#64748B]">Evidence Domains</span>
+            <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] shadow-xs flex flex-col justify-between">
+              <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)]">Evidence Domains</span>
               <div className="flex items-center justify-between mt-1">
-                <span className="text-base font-extrabold font-mono text-[#3157D5]">6 Domains</span>
-                <span className="badge text-[9px] font-bold bg-[#EEF2FF] text-[#3157D5] border border-[#C7D2FE]">CONVERGED</span>
+                <span className="text-base font-extrabold font-mono text-[var(--primary)]">6 Domains</span>
+                <span className="badge text-[9px] font-bold bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20">CONVERGED</span>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-3 border border-[#DCE3EE] shadow-xs flex flex-col justify-between">
-              <span className="text-[10px] font-bold uppercase text-[#64748B]">Deterministic Result</span>
+            <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] shadow-xs flex flex-col justify-between">
+              <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)]">Deterministic Result</span>
               <div className="flex items-center justify-between mt-1">
-                <span className="text-base font-extrabold font-mono text-[#D95C62]">{riskResult.riskScore} / 100</span>
-                <span className="badge text-[9px] font-bold bg-[#FFF1F2] text-[#D95C62] border border-[#FFE4E6]">BLOCK</span>
+                <span className="text-base font-extrabold font-mono text-[var(--danger)]">{riskResult.riskScore} / 100</span>
+                <span className="badge text-[9px] font-bold bg-rose-500/10 text-[var(--danger)] border border-rose-500/20">BLOCK</span>
               </div>
             </div>
           </div>
 
           {/* AI Investigation Pipeline Topology Canvas Container */}
-          <div className="bg-white rounded-xl border border-[#DCE3EE] shadow-xs flex flex-col overflow-hidden">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs flex flex-col overflow-hidden">
             
             {/* Pipeline Header with Controls & Demo Player */}
-            <div className="px-4 py-3 border-b border-[#DCE3EE] flex flex-wrap items-center justify-between gap-2.5 bg-[#F8FAFD]">
+            <div className="px-4 py-3 border-b border-[var(--border)] flex flex-wrap items-center justify-between gap-2.5 bg-[var(--surface-muted)]">
               <div>
                 <div className="flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-[#3157D5]" />
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#172033]">
+                  <Layers className="h-4 w-4 text-[var(--primary)]" />
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                     AI Investigation Pipeline Topology
                   </h2>
                 </div>
-                <p className="text-[11px] text-[#64748B] mt-0.5">
+                <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                   11 specialized agents evaluate transaction telemetry · Drag nodes or pan canvas
                 </p>
               </div>
@@ -1268,8 +1270,8 @@ export const InvestigationWorkspace: React.FC = () => {
                   onClick={() => setIsPlayingDemo(!isPlayingDemo)}
                   className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
                     isPlayingDemo
-                      ? 'bg-[#3157D5] text-white border-[#3157D5] animate-pulse'
-                      : 'bg-white text-[#3157D5] border-[#DCE3EE] hover:bg-[#EEF2FF]'
+                      ? 'bg-[var(--primary)] text-white border-[var(--primary)] animate-pulse'
+                      : 'bg-[var(--surface)] text-[var(--primary)] border-[var(--border)] hover:bg-[var(--surface-muted)]'
                   }`}
                   title="Step through all 11 agents in sequence (Space)"
                 >
@@ -1280,38 +1282,38 @@ export const InvestigationWorkspace: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <Play className="h-3.5 w-3.5 text-[#3157D5]" />
+                      <Play className="h-3.5 w-3.5 text-[var(--primary)]" />
                       <span>Play Pipeline</span>
                     </>
                   )}
                 </button>
 
-                <div className="h-4 w-px bg-[#DCE3EE] mx-1" />
+                <div className="h-4 w-px bg-[var(--border)] mx-1" />
 
                 <button
                   onClick={zoomIn}
-                  className="p-1.5 rounded-lg border border-[#DCE3EE] bg-white text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFD] cursor-pointer"
+                  className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
                   title="Zoom In (+)"
                 >
                   <ZoomIn className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={zoomOut}
-                  className="p-1.5 rounded-lg border border-[#DCE3EE] bg-white text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFD] cursor-pointer"
+                  className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
                   title="Zoom Out (-)"
                 >
                   <ZoomOut className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={fitToView}
-                  className="p-1.5 rounded-lg border border-[#DCE3EE] bg-white text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFD] cursor-pointer"
+                  className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
                   title="Fit to Canvas (F)"
                 >
                   <Check className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={resetLayout}
-                  className="p-1.5 rounded-lg border border-[#DCE3EE] bg-white text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFD] cursor-pointer"
+                  className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
                   title="Reset Layout (R)"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
@@ -1320,7 +1322,7 @@ export const InvestigationWorkspace: React.FC = () => {
                 {/* WORKING REAL FULLSCREEN BUTTON */}
                 <button
                   onClick={handleEnterFullscreen}
-                  className="p-1.5 rounded-lg border border-[#3157D5] bg-[#EEF2FF] text-[#3157D5] hover:bg-[#3157D5] hover:text-white transition-colors cursor-pointer shadow-xs ml-1"
+                  className="p-1.5 rounded-lg border border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white transition-colors cursor-pointer shadow-xs ml-1"
                   title="Expand to Fullscreen Workspace (Esc to close)"
                 >
                   <Maximize2 className="h-3.5 w-3.5" />
@@ -1334,9 +1336,9 @@ export const InvestigationWorkspace: React.FC = () => {
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
-              className="relative w-full h-[220px] bg-[#FAFBFD] overflow-hidden cursor-grab active:cursor-grabbing select-none"
+              className="relative w-full h-[220px] bg-[var(--background)] overflow-hidden cursor-grab active:cursor-grabbing select-none"
               style={{
-                backgroundImage: 'radial-gradient(#CBD5E1 0.75px, transparent 0.75px)',
+                backgroundImage: resolvedTheme === 'dark' ? 'radial-gradient(#22354D 1px, transparent 1px)' : 'radial-gradient(#CBD5E1 0.75px, transparent 0.75px)',
                 backgroundSize: '16px 16px'
               }}
             >
@@ -1363,7 +1365,7 @@ export const InvestigationWorkspace: React.FC = () => {
                       markerHeight="6"
                       orient="auto-start-reverse"
                     >
-                      <path d="M 0 1 L 9 5 L 0 9 z" fill="#94A3B8" />
+                      <path d="M 0 1 L 9 5 L 0 9 z" fill={resolvedTheme === 'dark' ? '#304761' : '#94A3B8'} />
                     </marker>
                     <marker
                       id="arrow-active"
@@ -1374,7 +1376,7 @@ export const InvestigationWorkspace: React.FC = () => {
                       markerHeight="6"
                       orient="auto-start-reverse"
                     >
-                      <path d="M 0 1 L 9 5 L 0 9 z" fill="#3157D5" />
+                      <path d="M 0 1 L 9 5 L 0 9 z" fill="var(--primary)" />
                     </marker>
                     <marker
                       id="arrow-critical"
@@ -1385,7 +1387,7 @@ export const InvestigationWorkspace: React.FC = () => {
                       markerHeight="6"
                       orient="auto-start-reverse"
                     >
-                      <path d="M 0 1 L 9 5 L 0 9 z" fill="#D95C62" />
+                      <path d="M 0 1 L 9 5 L 0 9 z" fill="var(--danger)" />
                     </marker>
                   </defs>
 
@@ -1406,14 +1408,14 @@ export const InvestigationWorkspace: React.FC = () => {
                     const isEdgeCritical =
                       meta.status === 'CRITICAL' || nextMeta.status === 'CRITICAL';
 
-                    let strokeColor = '#CBD5E1';
+                    let strokeColor = resolvedTheme === 'dark' ? '#22354D' : '#CBD5E1';
                     let markerId = 'url(#arrow-default)';
 
                     if (isSourceOrTargetSelected) {
-                      strokeColor = '#3157D5';
+                      strokeColor = 'var(--primary)';
                       markerId = 'url(#arrow-active)';
                     } else if (isEdgeCritical) {
-                      strokeColor = '#FDA4AF';
+                      strokeColor = resolvedTheme === 'dark' ? 'rgba(255, 107, 118, 0.4)' : '#FDA4AF';
                       markerId = 'url(#arrow-critical)';
                     }
 
@@ -1438,7 +1440,7 @@ export const InvestigationWorkspace: React.FC = () => {
                             cx={(x1 + x2) / 2}
                             cy={(y1 + y2) / 2}
                             r="5"
-                            fill="#3157D5"
+                            fill="var(--primary)"
                             className="animate-ping"
                           />
                         )}
@@ -1470,12 +1472,12 @@ export const InvestigationWorkspace: React.FC = () => {
                           width: `${pos.w}px`,
                           height: `${pos.h}px`,
                         }}
-                        className={`canvas-node absolute bg-white rounded-xl border flex flex-col justify-between p-3 cursor-grab active:cursor-grabbing transition-all duration-200 ${
+                        className={`canvas-node absolute bg-[var(--surface)] rounded-xl border flex flex-col justify-between p-3 cursor-grab active:cursor-grabbing transition-all duration-200 ${
                           isSelected
-                            ? 'border-[#3157D5] ring-2 ring-[#3157D5]/25 shadow-card -translate-y-1 scale-102 z-20'
+                            ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/25 shadow-card -translate-y-1 scale-102 z-20'
                             : isCurrentlyPlaying
-                            ? 'border-[#3157D5] ring-2 ring-[#3157D5]/40 shadow-card animate-pulse z-20'
-                            : 'border-[#DCE3EE] hover:border-[#CBD5E1] hover:shadow-xs shadow-none z-10 opacity-95 hover:opacity-100 hover:-translate-y-0.5'
+                            ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/40 shadow-card animate-pulse z-20'
+                            : 'border-[var(--border)] hover:border-[var(--border-strong)] hover:shadow-xs shadow-none z-10 opacity-95 hover:opacity-100 hover:-translate-y-0.5'
                         }`}
                       >
                         {/* Top Accent Color Line */}
@@ -1486,21 +1488,21 @@ export const InvestigationWorkspace: React.FC = () => {
 
                         {/* Top Row: Stage Number + Icon + Status Symbol */}
                         <div className="flex items-center justify-between pt-0.5">
-                          <span className="font-mono text-[10px] font-extrabold text-[#64748B]">
+                          <span className="font-mono text-[10px] font-extrabold text-[var(--text-secondary)]">
                             {meta.stageNumber}
                           </span>
                           <div
                             className="p-1 rounded-md"
-                            style={{ backgroundColor: meta.bgLight, color: meta.accentColor }}
+                            style={{ backgroundColor: `${meta.accentColor}20`, color: meta.accentColor }}
                           >
                             <Icon className="h-3.5 w-3.5" />
                           </div>
                           <span className={`text-[9px] font-mono font-bold px-1 rounded ${
                             isCompletedInPlayback
-                              ? 'text-[#159A75] bg-[#F0FDF4]'
+                              ? 'text-[var(--success)] bg-emerald-500/10'
                               : meta.status === 'CRITICAL'
-                              ? 'text-[#D95C62] bg-[#FFF1F2]'
-                              : 'text-[#159A75] bg-[#F0FDF4]'
+                              ? 'text-[var(--danger)] bg-rose-500/10'
+                              : 'text-[var(--success)] bg-emerald-500/10'
                           }`}>
                             {isCompletedInPlayback ? '✓' : meta.status === 'CRITICAL' ? '!' : '✓'}
                           </span>
@@ -1508,20 +1510,20 @@ export const InvestigationWorkspace: React.FC = () => {
 
                         {/* Middle: Agent Name */}
                         <div>
-                          <div className="text-xs font-black text-[#172033] tracking-tight uppercase leading-tight truncate">
+                          <div className="text-xs font-black text-[var(--text-primary)] tracking-tight uppercase leading-tight truncate">
                             {meta.name}
                           </div>
-                          <div className="text-[9px] font-semibold text-[#64748B] tracking-wider uppercase">
+                          <div className="text-[9px] font-semibold text-[var(--text-secondary)] tracking-wider uppercase">
                             AGENT · {meta.domain}
                           </div>
                         </div>
 
                         {/* Bottom Row: Status Badge & Contribution */}
-                        <div className="flex items-center justify-between pt-1 border-t border-[#F1F5F9]">
+                        <div className="flex items-center justify-between pt-1 border-t border-[var(--border)]">
                           <span className={`text-[8.5px] px-1.5 py-0.5 rounded font-mono font-bold border truncate max-w-[95px] ${meta.statusColor}`}>
                             {meta.status}
                           </span>
-                          <span className="font-mono text-[9px] font-bold text-[#D95C62] bg-[#FFF1F2] px-1 py-0.5 rounded border border-[#FFE4E6]">
+                          <span className="font-mono text-[9px] font-bold text-[var(--danger)] bg-rose-500/10 px-1 py-0.5 rounded border border-rose-500/20">
                             {meta.riskContribution}
                           </span>
                         </div>
@@ -1532,7 +1534,7 @@ export const InvestigationWorkspace: React.FC = () => {
               </div>
 
               {/* Pan & Drag Hint */}
-              <div className="absolute bottom-2 right-3 pointer-events-none text-[10px] font-mono text-[#94A3B8] bg-white/80 px-2 py-0.5 rounded border border-[#DCE3EE]/60 backdrop-blur-xs flex items-center gap-1.5">
+              <div className="absolute bottom-2 right-3 pointer-events-none text-[10px] font-mono text-[var(--text-muted)] bg-[var(--surface)]/80 px-2 py-0.5 rounded border border-[var(--border)] backdrop-blur-xs flex items-center gap-1.5">
                 <span>Drag nodes · Pan canvas · Click agent to inspect</span>
               </div>
             </div>
@@ -1541,14 +1543,14 @@ export const InvestigationWorkspace: React.FC = () => {
 
           {/* Pipeline Completion Banner */}
           {isPipelineComplete && (
-            <div className="bg-[#FFF1F2] border border-[#FFE4E6] rounded-xl p-3 px-4 flex items-center justify-between animate-in fade-in duration-200 shadow-xs">
+            <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 px-4 flex items-center justify-between animate-in fade-in duration-200 shadow-xs">
               <div className="flex items-center gap-2.5">
-                <ShieldAlert className="h-5 w-5 text-[#D95C62]" />
+                <ShieldAlert className="h-5 w-5 text-[var(--danger)]" />
                 <div>
-                  <div className="text-xs font-extrabold text-[#D95C62] uppercase tracking-wide">
+                  <div className="text-xs font-extrabold text-[var(--danger)] uppercase tracking-wide">
                     INVESTIGATION COMPLETE · 11/11 VERIFIED · 7 CORRELATED SIGNALS
                   </div>
-                  <div className="text-[11px] text-[#64748B]">
+                  <div className="text-[11px] text-[var(--text-secondary)]">
                     100/100 CRITICAL RISK · AI RECOMMENDATION: BLOCK &amp; CREATE CASE
                   </div>
                 </div>
@@ -1558,35 +1560,34 @@ export const InvestigationWorkspace: React.FC = () => {
                   setIsPipelineComplete(false);
                   setCurrentPlayIndex(-1);
                 }}
-                className="text-xs font-bold text-[#D95C62] hover:underline cursor-pointer"
+                className="text-xs font-bold text-[var(--danger)] hover:underline cursor-pointer"
               >
                 Dismiss
               </button>
             </div>
           )}
-
           {/* ─── 3. DYNAMIC AGENT INTELLIGENCE PANEL (Drawer) ───────────────────── */}
-          <div className="bg-white rounded-xl border border-[#DCE3EE] shadow-xs p-4 flex flex-col gap-3.5 animate-in fade-in duration-200">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs p-4 flex flex-col gap-3.5 animate-in fade-in duration-200">
             {/* Panel Header */}
-            <div className="flex flex-wrap items-center justify-between border-b border-[#DCE3EE] pb-2.5 gap-2">
+            <div className="flex flex-wrap items-center justify-between border-b border-[var(--border)] pb-2.5 gap-2">
               <div className="flex items-center gap-2.5">
                 <div
                   className="flex h-8 w-8 items-center justify-center rounded-lg shadow-xs"
-                  style={{ backgroundColor: selectedAgentDetails.meta.bgLight, color: selectedAgentDetails.meta.accentColor }}
+                  style={{ backgroundColor: `${selectedAgentDetails.meta.accentColor}20`, color: selectedAgentDetails.meta.accentColor }}
                 >
                   {React.createElement(selectedAgentDetails.meta.icon, { className: 'h-4 w-4' })}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-extrabold text-[#172033] uppercase">
+                    <h3 className="text-sm font-extrabold text-[var(--text-primary)] uppercase">
                       {selectedAgentDetails.meta.name} Agent
                     </h3>
-                    <span className="font-mono text-[10px] text-[#64748B] bg-[#F8FAFD] px-1.5 py-0.5 rounded border border-[#DCE3EE]">
+                    <span className="font-mono text-[10px] text-[var(--text-secondary)] bg-[var(--surface-muted)] px-1.5 py-0.5 rounded border border-[var(--border)]">
                       Stage {selectedAgentDetails.meta.stageNumber}
                     </span>
                   </div>
-                  <div className="text-[11px] text-[#64748B]">
-                    Domain: <span className="font-semibold text-[#172033]">{selectedAgentDetails.meta.domain}</span> · Latency: <span className="font-mono text-[#3157D5] font-semibold">{selectedAgentDetails.meta.latency}</span>
+                  <div className="text-[11px] text-[var(--text-secondary)]">
+                    Domain: <span className="font-semibold text-[var(--text-primary)]">{selectedAgentDetails.meta.domain}</span> · Latency: <span className="font-mono text-[var(--primary)] font-semibold">{selectedAgentDetails.meta.latency}</span>
                   </div>
                 </div>
               </div>
@@ -1595,45 +1596,45 @@ export const InvestigationWorkspace: React.FC = () => {
                 <span className={`badge text-[10px] font-bold border ${selectedAgentDetails.meta.statusColor}`}>
                   {selectedAgentDetails.meta.status}
                 </span>
-                <span className="badge text-[10px] font-mono font-bold bg-[#F0FDF4] text-[#159A75] border border-[#BBF7D0]">
+                <span className="badge text-[10px] font-mono font-bold bg-emerald-500/10 text-[var(--success)] border border-emerald-500/20">
                   {selectedAgentDetails.confidence} CONF
                 </span>
               </div>
             </div>
 
             {/* Findings Box */}
-            <div className="p-3.5 rounded-lg border border-[#DCE3EE] bg-[#F8FAFD] space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] block font-mono">
+            <div className="p-3.5 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] space-y-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] block font-mono">
                 Agent Analytical Finding
               </span>
-              <p className="text-xs text-[#172033] font-medium leading-relaxed">
+              <p className="text-xs text-[var(--text-primary)] font-medium leading-relaxed">
                 {selectedAgentDetails.finding}
               </p>
             </div>
 
             {/* Dual Grid: Attribution + Telemetry */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg border border-[#DCE3EE] bg-white space-y-2">
+              <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase text-[#64748B]">Risk Attribution</span>
-                  <span className="text-[10px] font-mono font-bold text-[#D95C62] bg-[#FFF1F2] px-1.5 py-0.5 rounded border border-[#FFE4E6]">
+                  <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)]">Risk Attribution</span>
+                  <span className="text-[10px] font-mono font-bold text-[var(--danger)] bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
                     {selectedAgentDetails.riskContribution}
                   </span>
                 </div>
-                <div className="font-mono text-xs font-bold text-[#3157D5] bg-[#EEF2FF] p-1.5 rounded border border-[#C7D2FE]">
+                <div className="font-mono text-xs font-bold text-[var(--primary)] bg-[var(--primary)]/10 p-1.5 rounded border border-[var(--primary)]/20">
                   {String(selectedAgentDetails.reasonCode)}
                 </div>
-                <div className="text-[11px] text-[#64748B]">
+                <div className="text-[11px] text-[var(--text-secondary)]">
                   Attribution: Evaluated against authoritative institutional threshold rules.
                 </div>
               </div>
 
-              <div className="p-3 rounded-lg border border-[#DCE3EE] bg-white space-y-1.5 font-mono">
-                <span className="text-[10px] font-bold uppercase text-[#64748B] block font-sans">Telemetry Metrics</span>
+              <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] space-y-1.5 font-mono">
+                <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)] block font-sans">Telemetry Metrics</span>
                 {selectedAgentDetails.metrics.map((m, idx) => (
                   <div key={idx} className="flex justify-between text-[11px]">
-                    <span className="text-[#64748B]">{m.label}:</span>
-                    <span className="font-bold text-[#172033]">{m.value}</span>
+                    <span className="text-[var(--text-secondary)]">{m.label}:</span>
+                    <span className="font-bold text-[var(--text-primary)]">{m.value}</span>
                   </div>
                 ))}
               </div>
@@ -1641,12 +1642,12 @@ export const InvestigationWorkspace: React.FC = () => {
 
             {/* Evidence items */}
             <div className="space-y-1.5">
-              <span className="text-[10px] font-bold uppercase text-[#64748B] block">Evidence Parameters</span>
+              <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)] block">Evidence Parameters</span>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                 {selectedAgentDetails.evidence.map((ev, idx) => (
-                  <div key={idx} className="p-2 rounded bg-[#F8FAFD] border border-[#DCE3EE]">
-                    <div className="text-[10px] text-[#64748B] uppercase">{ev.key}</div>
-                    <div className="font-mono font-semibold text-[#172033] truncate mt-0.5" title={ev.val}>
+                  <div key={idx} className="p-2 rounded bg-[var(--surface-muted)] border border-[var(--border)]">
+                    <div className="text-[10px] text-[var(--text-secondary)] uppercase">{ev.key}</div>
+                    <div className="font-mono font-semibold text-[var(--text-primary)] truncate mt-0.5" title={ev.val}>
                       {ev.val}
                     </div>
                   </div>
@@ -1655,18 +1656,18 @@ export const InvestigationWorkspace: React.FC = () => {
             </div>
 
             {/* Quick Entity Links */}
-            <div className="pt-2 border-t border-[#F1F5F9] flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="pt-2 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2">
-                <span className="text-[#64748B]">Related Entities:</span>
+                <span className="text-[var(--text-secondary)]">Related Entities:</span>
                 {selectedAgentDetails.relatedEntities.map((ent, i) => (
-                  <span key={i} className="font-mono text-[11px] bg-[#EEF2FF] text-[#3157D5] px-2 py-0.5 rounded border border-[#C7D2FE]">
+                  <span key={i} className="font-mono text-[11px] bg-[var(--primary)]/10 text-[var(--primary)] px-2 py-0.5 rounded border border-[var(--primary)]/20">
                     {ent}
                   </span>
                 ))}
               </div>
               <a
                 href="#entity-graph"
-                className="text-xs font-bold text-[#3157D5] hover:underline flex items-center gap-1"
+                className="text-xs font-bold text-[var(--primary)] hover:underline flex items-center gap-1"
               >
                 <span>View In Entity Graph</span>
                 <ChevronRight className="h-3 w-3" />
@@ -1675,33 +1676,33 @@ export const InvestigationWorkspace: React.FC = () => {
           </div>
 
           {/* ─── 4. EVIDENCE CORRELATION MAP (Requirement 14) ──────────────────── */}
-          <div className="bg-white rounded-xl border border-[#DCE3EE] shadow-xs p-4 flex flex-col gap-3">
-            <div className="flex items-center justify-between border-b border-[#DCE3EE] pb-2">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
               <div className="flex items-center gap-2">
-                <GitMerge className="h-4 w-4 text-[#3157D5]" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#172033]">
+                <GitMerge className="h-4 w-4 text-[var(--primary)]" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                   Evidence Correlation Flow
                 </h3>
               </div>
-              <span className="text-[10px] font-mono text-[#D95C62] font-bold">
+              <span className="text-[10px] font-mono text-[var(--danger)] font-bold">
                 7 Signals · 6 Domains Converged
               </span>
             </div>
 
-            <div className="relative pl-4 space-y-3 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#DCE3EE]">
+            <div className="relative pl-4 space-y-3 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[var(--border)]">
               {evidenceCards.map((card, i) => (
                 <div
                   key={i}
                   onClick={() => setSelectedAgentName(card.agent)}
-                  className={`relative p-2.5 rounded-lg border bg-[#F8FAFD] hover:bg-white transition-all cursor-pointer ${card.color} border-l-4 shadow-xs`}
+                  className={`relative p-2.5 rounded-lg border bg-[var(--surface-muted)] hover:bg-[var(--surface)] transition-all cursor-pointer ${card.color} border-l-4 shadow-xs`}
                 >
-                  <span className="absolute -left-[21px] top-3 h-2.5 w-2.5 rounded-full bg-[#3157D5] ring-2 ring-white" />
+                  <span className="absolute -left-[21px] top-3 h-2.5 w-2.5 rounded-full bg-[var(--primary)] ring-2 ring-[var(--surface)]" />
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase text-[#64748B]">{card.title}</span>
-                    <span className="text-[10px] font-mono font-bold text-[#3157D5]">→ {card.agent}</span>
+                    <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)]">{card.title}</span>
+                    <span className="text-[10px] font-mono font-bold text-[var(--primary)]">→ {card.agent}</span>
                   </div>
-                  <div className="font-mono text-xs font-black text-[#172033] mt-0.5">{card.value}</div>
-                  <div className="text-[11px] text-[#64748B] mt-0.5">{card.tag}</div>
+                  <div className="font-mono text-xs font-black text-[var(--text-primary)] mt-0.5">{card.value}</div>
+                  <div className="text-[11px] text-[var(--text-secondary)] mt-0.5">{card.tag}</div>
                 </div>
               ))}
             </div>
@@ -1711,188 +1712,188 @@ export const InvestigationWorkspace: React.FC = () => {
 
         {/* ─── RIGHT COLUMN: COLLAPSIBLE CONTEXT DOSSIER (LG: col-span-3) ─────── */}
         <div className="lg:col-span-3 flex flex-col gap-3 lg:sticky lg:top-4 self-start">
-          <div className="bg-white rounded-xl border border-[#DCE3EE] shadow-xs p-4 flex flex-col gap-3">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs p-4 flex flex-col gap-3">
             
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[#DCE3EE] pb-2">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
               <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-[#3157D5]" />
-                <h2 className="text-xs font-bold uppercase tracking-wider text-[#172033]">
+                <CreditCard className="h-4 w-4 text-[var(--primary)]" />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                   Investigation Context Dossier
                 </h2>
               </div>
-              <span className="text-[10px] font-mono text-[#64748B]">Entity Data</span>
+              <span className="text-[10px] font-mono text-[var(--text-secondary)]">Entity Data</span>
             </div>
 
             {/* CUSTOMER */}
-            <div className="border border-[#DCE3EE] rounded-lg overflow-hidden bg-[#FAFBFD]">
+            <div className="border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--surface-muted)]">
               <button
                 onClick={() => toggleDossierSection('customer')}
-                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[#F1F5F9] transition-colors cursor-pointer"
+                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[var(--surface)] transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <User className="h-3.5 w-3.5 text-[#3157D5]" />
-                  <span className="text-[10px] font-bold uppercase text-[#172033]">Customer</span>
+                  <User className="h-3.5 w-3.5 text-[var(--primary)]" />
+                  <span className="text-[10px] font-bold uppercase text-[var(--text-primary)]">Customer</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 rounded border border-[#DCE3EE] font-bold text-[#159A75]">KYC 3</span>
-                  {collapsedDossier.customer ? <ChevronDown className="h-3.5 w-3.5 text-[#64748B]" /> : <ChevronUp className="h-3.5 w-3.5 text-[#64748B]" />}
+                  <span className="text-[9px] font-mono bg-[var(--surface)] px-1.5 py-0.5 rounded border border-[var(--border)] font-bold text-[var(--success)]">KYC 3</span>
+                  {collapsedDossier.customer ? <ChevronDown className="h-3.5 w-3.5 text-[var(--text-secondary)]" /> : <ChevronUp className="h-3.5 w-3.5 text-[var(--text-secondary)]" />}
                 </div>
               </button>
               {!collapsedDossier.customer && (
-                <div className="p-3 pt-0 text-xs space-y-1.5 bg-white border-t border-[#E2E8F0]">
-                  <div className="flex justify-between font-medium text-[#172033]">
+                <div className="p-3 pt-0 text-xs space-y-1.5 bg-[var(--surface)] border-t border-[var(--border)]">
+                  <div className="flex justify-between font-medium text-[var(--text-primary)]">
                     <span>Name</span>
                     <span className="font-bold">{input.customer.name}</span>
                   </div>
-                  <div className="flex justify-between text-[#64748B]">
+                  <div className="flex justify-between text-[var(--text-secondary)]">
                     <span>Customer ID</span>
-                    <span className="font-mono text-[#172033]">{input.customer.customer_id}</span>
+                    <span className="font-mono text-[var(--text-primary)]">{input.customer.customer_id}</span>
                   </div>
-                  <div className="flex justify-between text-[#64748B]">
+                  <div className="flex justify-between text-[var(--text-secondary)]">
                     <span>Home City</span>
-                    <span className="text-[#172033]">{input.customer.home_city}</span>
+                    <span className="text-[var(--text-primary)]">{input.customer.home_city}</span>
                   </div>
-                  <div className="flex justify-between text-[#64748B]">
+                  <div className="flex justify-between text-[var(--text-secondary)]">
                     <span>Baseline Range</span>
-                    <span className="font-mono text-[#172033]">₹1,000 – ₹8,000</span>
+                    <span className="font-mono text-[var(--text-primary)]">₹1,000 – ₹8,000</span>
                   </div>
                 </div>
               )}
             </div>
 
             {/* ACCOUNT */}
-            <div className="border border-[#DCE3EE] rounded-lg overflow-hidden bg-[#FAFBFD]">
+            <div className="border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--surface-muted)]">
               <button
                 onClick={() => toggleDossierSection('account')}
-                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[#F1F5F9] transition-colors cursor-pointer"
+                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[var(--surface)] transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <CreditCard className="h-3.5 w-3.5 text-[#6C63D9]" />
-                  <span className="text-[10px] font-bold uppercase text-[#172033]">Account</span>
+                  <CreditCard className="h-3.5 w-3.5 text-[var(--secondary)]" />
+                  <span className="text-[10px] font-bold uppercase text-[var(--text-primary)]">Account</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 rounded border border-[#DCE3EE] font-bold text-[#159A75]">ACTIVE</span>
-                  {collapsedDossier.account ? <ChevronDown className="h-3.5 w-3.5 text-[#64748B]" /> : <ChevronUp className="h-3.5 w-3.5 text-[#64748B]" />}
+                  <span className="text-[9px] font-mono bg-[var(--surface)] px-1.5 py-0.5 rounded border border-[var(--border)] font-bold text-[var(--success)]">ACTIVE</span>
+                  {collapsedDossier.account ? <ChevronDown className="h-3.5 w-3.5 text-[var(--text-secondary)]" /> : <ChevronUp className="h-3.5 w-3.5 text-[var(--text-secondary)]" />}
                 </div>
               </button>
               {!collapsedDossier.account && (
-                <div className="p-3 pt-0 text-xs space-y-1.5 bg-white border-t border-[#E2E8F0]">
+                <div className="p-3 pt-0 text-xs space-y-1.5 bg-[var(--surface)] border-t border-[var(--border)]">
                   <div className="flex justify-between font-mono">
-                    <span className="text-[#64748B]">Account ID</span>
-                    <span className="font-bold text-[#172033]">{scenario.account?.account_id || 'ACC-1003-SAV'}</span>
+                    <span className="text-[var(--text-secondary)]">Account ID</span>
+                    <span className="font-bold text-[var(--text-primary)]">{scenario.account?.account_id || 'ACC-1003-SAV'}</span>
                   </div>
-                  <div className="flex justify-between text-[#64748B]">
+                  <div className="flex justify-between text-[var(--text-secondary)]">
                     <span>Type</span>
-                    <span className="font-medium text-[#172033]">{scenario.account?.account_type || 'SAVINGS'}</span>
+                    <span className="font-medium text-[var(--text-primary)]">{scenario.account?.account_type || 'SAVINGS'}</span>
                   </div>
-                  <div className="flex justify-between text-[#64748B]">
+                  <div className="flex justify-between text-[var(--text-secondary)]">
                     <span>Balance</span>
-                    <span className="font-mono font-bold text-[#159A75]">₹142,500</span>
+                    <span className="font-mono font-bold text-[var(--success)]">₹142,500</span>
                   </div>
                 </div>
               )}
             </div>
 
             {/* DEVICE */}
-            <div className="border border-[#FFE4E6] rounded-lg overflow-hidden bg-[#FFF1F2]/40">
+            <div className="border border-rose-500/20 rounded-lg overflow-hidden bg-rose-500/5">
               <button
                 onClick={() => toggleDossierSection('device')}
-                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[#FFF1F2] transition-colors cursor-pointer"
+                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-rose-500/10 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <Smartphone className="h-3.5 w-3.5 text-[#D95C62]" />
-                  <span className="text-[10px] font-bold uppercase text-[#D95C62]">Device (Rogue)</span>
+                  <Smartphone className="h-3.5 w-3.5 text-[var(--danger)]" />
+                  <span className="text-[10px] font-bold uppercase text-[var(--danger)]">Device (Rogue)</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 rounded border border-[#FFE4E6] font-bold text-[#D95C62]">UNTRUSTED</span>
-                  {collapsedDossier.device ? <ChevronDown className="h-3.5 w-3.5 text-[#64748B]" /> : <ChevronUp className="h-3.5 w-3.5 text-[#64748B]" />}
+                  <span className="text-[9px] font-mono bg-[var(--surface)] px-1.5 py-0.5 rounded border border-rose-500/20 font-bold text-[var(--danger)]">UNTRUSTED</span>
+                  {collapsedDossier.device ? <ChevronDown className="h-3.5 w-3.5 text-[var(--text-secondary)]" /> : <ChevronUp className="h-3.5 w-3.5 text-[var(--text-secondary)]" />}
                 </div>
               </button>
               {!collapsedDossier.device && (
-                <div className="p-3 pt-0 text-xs space-y-1.5 bg-white border-t border-[#FFE4E6]">
+                <div className="p-3 pt-0 text-xs space-y-1.5 bg-[var(--surface)] border-t border-rose-500/20">
                   <div className="flex justify-between font-mono">
-                    <span className="text-[#64748B]">Device ID</span>
-                    <span className="font-bold text-[#D95C62]">{input.transaction.device_id || 'DEV-1003-ROGUE'}</span>
+                    <span className="text-[var(--text-secondary)]">Device ID</span>
+                    <span className="font-bold text-[var(--danger)]">{input.transaction.device_id || 'DEV-1003-ROGUE'}</span>
                   </div>
-                  <div className="flex justify-between text-[#64748B]">
+                  <div className="flex justify-between text-[var(--text-secondary)]">
                     <span>Classification</span>
-                    <span className="font-semibold text-[#D95C62]">Kali Emulator</span>
+                    <span className="font-semibold text-[var(--danger)]">Kali Emulator</span>
                   </div>
-                  <div className="flex justify-between text-[#64748B]">
+                  <div className="flex justify-between text-[var(--text-secondary)]">
                     <span>First Seen</span>
-                    <span className="font-mono text-[#172033]">02:11 AM IST</span>
+                    <span className="font-mono text-[var(--text-primary)]">02:11 AM IST</span>
                   </div>
                 </div>
               )}
             </div>
 
             {/* NETWORK */}
-            <div className="border border-[#DCE3EE] rounded-lg overflow-hidden bg-[#FAFBFD]">
+            <div className="border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--surface-muted)]">
               <button
                 onClick={() => toggleDossierSection('network')}
-                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[#F1F5F9] transition-colors cursor-pointer"
+                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[var(--surface)] transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <Globe className="h-3.5 w-3.5 text-[#4F46E5]" />
-                  <span className="text-[10px] font-bold uppercase text-[#172033]">Network Gateway</span>
+                  <Globe className="h-3.5 w-3.5 text-[var(--secondary)]" />
+                  <span className="text-[10px] font-bold uppercase text-[var(--text-primary)]">Network Gateway</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 rounded border border-[#DCE3EE] font-bold text-[#D95C62]">PROXY</span>
-                  {collapsedDossier.network ? <ChevronDown className="h-3.5 w-3.5 text-[#64748B]" /> : <ChevronUp className="h-3.5 w-3.5 text-[#64748B]" />}
+                  <span className="text-[9px] font-mono bg-[var(--surface)] px-1.5 py-0.5 rounded border border-[var(--border)] font-bold text-[var(--danger)]">PROXY</span>
+                  {collapsedDossier.network ? <ChevronDown className="h-3.5 w-3.5 text-[var(--text-secondary)]" /> : <ChevronUp className="h-3.5 w-3.5 text-[var(--text-secondary)]" />}
                 </div>
               </button>
               {!collapsedDossier.network && (
-                <div className="p-3 pt-0 text-xs space-y-1.5 bg-white border-t border-[#E2E8F0]">
+                <div className="p-3 pt-0 text-xs space-y-1.5 bg-[var(--surface)] border-t border-[var(--border)]">
                   <div className="flex justify-between font-mono">
-                    <span className="text-[#64748B]">IP Address</span>
-                    <span className="font-bold text-[#172033]">{input.transaction.ip_address || '103.21.144.92'}</span>
+                    <span className="text-[var(--text-secondary)]">IP Address</span>
+                    <span className="font-bold text-[var(--text-primary)]">{input.transaction.ip_address || '103.21.144.92'}</span>
                   </div>
-                  <div className="flex justify-between text-[#64748B]">
+                  <div className="flex justify-between text-[var(--text-secondary)]">
                     <span>ASN</span>
-                    <span className="font-mono text-[#4F46E5] font-semibold">AS13335 (Cloudflare)</span>
+                    <span className="font-mono text-[var(--secondary)] font-semibold">AS13335 (Cloudflare)</span>
                   </div>
-                  <div className="flex justify-between text-[#64748B]">
+                  <div className="flex justify-between text-[var(--text-secondary)]">
                     <span>Datacenter Proxy</span>
-                    <span className="font-bold text-[#D95C62]">CONFIRMED</span>
+                    <span className="font-bold text-[var(--danger)]">CONFIRMED</span>
                   </div>
                 </div>
               )}
             </div>
 
             {/* LOGIN ACTIVITY */}
-            <div className="border border-[#DCE3EE] rounded-lg overflow-hidden bg-[#FAFBFD]">
+            <div className="border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--surface-muted)]">
               <button
                 onClick={() => toggleDossierSection('logins')}
-                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[#F1F5F9] transition-colors cursor-pointer"
+                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[var(--surface)] transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <Clock className="h-3.5 w-3.5 text-[#D97706]" />
-                  <span className="text-[10px] font-bold uppercase text-[#172033]">Pre-Auth Timeline</span>
+                  <Clock className="h-3.5 w-3.5 text-amber-500" />
+                  <span className="text-[10px] font-bold uppercase text-[var(--text-primary)]">Pre-Auth Timeline</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 rounded border border-[#DCE3EE] font-bold text-[#D95C62]">3 FAILS</span>
-                  {collapsedDossier.logins ? <ChevronDown className="h-3.5 w-3.5 text-[#64748B]" /> : <ChevronUp className="h-3.5 w-3.5 text-[#64748B]" />}
+                  <span className="text-[9px] font-mono bg-[var(--surface)] px-1.5 py-0.5 rounded border border-[var(--border)] font-bold text-[var(--danger)]">3 FAILS</span>
+                  {collapsedDossier.logins ? <ChevronDown className="h-3.5 w-3.5 text-[var(--text-secondary)]" /> : <ChevronUp className="h-3.5 w-3.5 text-[var(--text-secondary)]" />}
                 </div>
               </button>
               {!collapsedDossier.logins && (
-                <div className="p-3 pt-0 text-xs bg-white border-t border-[#E2E8F0]">
-                  <div className="relative pl-3 space-y-2 before:absolute before:left-1 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#DCE3EE]">
+                <div className="p-3 pt-0 text-xs bg-[var(--surface)] border-t border-[var(--border)]">
+                  <div className="relative pl-3 space-y-2 before:absolute before:left-1 before:top-2 before:bottom-2 before:w-0.5 before:bg-[var(--border)]">
                     <div className="flex items-center justify-between font-mono text-[11px]">
-                      <span className="text-[#64748B]">01:58</span>
-                      <span className="text-[#D95C62] font-bold">FAILED LOGIN #1</span>
+                      <span className="text-[var(--text-secondary)]">01:58</span>
+                      <span className="text-[var(--danger)] font-bold">FAILED LOGIN #1</span>
                     </div>
                     <div className="flex items-center justify-between font-mono text-[11px]">
-                      <span className="text-[#64748B]">02:09</span>
-                      <span className="text-[#D95C62] font-bold">FAILED LOGIN #2</span>
+                      <span className="text-[var(--text-secondary)]">02:09</span>
+                      <span className="text-[var(--danger)] font-bold">FAILED LOGIN #2</span>
                     </div>
                     <div className="flex items-center justify-between font-mono text-[11px]">
-                      <span className="text-[#64748B]">02:11</span>
-                      <span className="text-[#D99425] font-extrabold">COMPROMISED LOGIN</span>
+                      <span className="text-[var(--text-secondary)]">02:11</span>
+                      <span className="text-[var(--warning)] font-extrabold">COMPROMISED LOGIN</span>
                     </div>
                     <div className="flex items-center justify-between font-mono text-[11px]">
-                      <span className="text-[#64748B]">02:13</span>
-                      <span className="text-[#3157D5] font-extrabold">₹85,000 TXN TRIGGER</span>
+                      <span className="text-[var(--text-secondary)]">02:13</span>
+                      <span className="text-[var(--primary)] font-extrabold">₹85,000 TXN TRIGGER</span>
                     </div>
                   </div>
                 </div>
@@ -1900,31 +1901,31 @@ export const InvestigationWorkspace: React.FC = () => {
             </div>
 
             {/* LOCATION */}
-            <div className="border border-[#DCE3EE] rounded-lg overflow-hidden bg-[#FAFBFD]">
+            <div className="border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--surface-muted)]">
               <button
                 onClick={() => toggleDossierSection('location')}
-                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[#F1F5F9] transition-colors cursor-pointer"
+                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[var(--surface)] transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-3.5 w-3.5 text-[#159A75]" />
-                  <span className="text-[10px] font-bold uppercase text-[#172033]">Location &amp; Velocity</span>
+                  <MapPin className="h-3.5 w-3.5 text-[var(--success)]" />
+                  <span className="text-[10px] font-bold uppercase text-[var(--text-primary)]">Location &amp; Velocity</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 rounded border border-[#DCE3EE] font-bold text-[#D95C62]">IMPOSSIBLE</span>
-                  {collapsedDossier.location ? <ChevronDown className="h-3.5 w-3.5 text-[#64748B]" /> : <ChevronUp className="h-3.5 w-3.5 text-[#64748B]" />}
+                  <span className="text-[9px] font-mono bg-[var(--surface)] px-1.5 py-0.5 rounded border border-[var(--border)] font-bold text-[var(--danger)]">IMPOSSIBLE</span>
+                  {collapsedDossier.location ? <ChevronDown className="h-3.5 w-3.5 text-[var(--text-secondary)]" /> : <ChevronUp className="h-3.5 w-3.5 text-[var(--text-secondary)]" />}
                 </div>
               </button>
               {!collapsedDossier.location && (
-                <div className="p-3 pt-0 text-xs space-y-1.5 bg-white border-t border-[#E2E8F0]">
+                <div className="p-3 pt-0 text-xs space-y-1.5 bg-[var(--surface)] border-t border-[var(--border)]">
                   <div className="flex justify-between">
-                    <span className="text-[#64748B]">Baseline Territory</span>
-                    <span className="font-semibold text-[#172033]">Bengaluru</span>
+                    <span className="text-[var(--text-secondary)]">Baseline Territory</span>
+                    <span className="font-semibold text-[var(--text-primary)]">Bengaluru</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#64748B]">Transaction City</span>
-                    <span className="font-bold text-[#D95C62]">{input.transaction.city || 'Mumbai'}</span>
+                    <span className="text-[var(--text-secondary)]">Transaction City</span>
+                    <span className="font-bold text-[var(--danger)]">{input.transaction.city || 'Mumbai'}</span>
                   </div>
-                  <div className="flex justify-between text-[#D95C62] font-mono font-bold">
+                  <div className="flex justify-between text-[var(--danger)] font-mono font-bold">
                     <span>Jump Velocity</span>
                     <span>840 km / 4m (Supersonic)</span>
                   </div>
@@ -1933,45 +1934,45 @@ export const InvestigationWorkspace: React.FC = () => {
             </div>
 
             {/* MERCHANT */}
-            <div className="border border-[#DCE3EE] rounded-lg overflow-hidden bg-[#FAFBFD]">
+            <div className="border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--surface-muted)]">
               <button
                 onClick={() => toggleDossierSection('merchant')}
-                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[#F1F5F9] transition-colors cursor-pointer"
+                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[var(--surface)] transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <Store className="h-3.5 w-3.5 text-[#D95C62]" />
-                  <span className="text-[10px] font-bold uppercase text-[#172033]">Merchant Entity</span>
+                  <Store className="h-3.5 w-3.5 text-[var(--danger)]" />
+                  <span className="text-[10px] font-bold uppercase text-[var(--text-primary)]">Merchant Entity</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 rounded border border-[#DCE3EE] font-bold text-[#D95C62]">MCC 5094</span>
-                  {collapsedDossier.merchant ? <ChevronDown className="h-3.5 w-3.5 text-[#64748B]" /> : <ChevronUp className="h-3.5 w-3.5 text-[#64748B]" />}
+                  <span className="text-[9px] font-mono bg-[var(--surface)] px-1.5 py-0.5 rounded border border-[var(--border)] font-bold text-[var(--danger)]">MCC 5094</span>
+                  {collapsedDossier.merchant ? <ChevronDown className="h-3.5 w-3.5 text-[var(--text-secondary)]" /> : <ChevronUp className="h-3.5 w-3.5 text-[var(--text-secondary)]" />}
                 </div>
               </button>
               {!collapsedDossier.merchant && (
-                <div className="p-3 pt-0 text-xs space-y-1.5 bg-white border-t border-[#E2E8F0]">
-                  <div className="font-bold text-[#172033]">{input.transaction.merchant || 'Luxury Jewels & Bullion'}</div>
-                  <div className="text-[11px] text-[#64748B]">Category: Precious Bullion &amp; Liquid Metals</div>
+                <div className="p-3 pt-0 text-xs space-y-1.5 bg-[var(--surface)] border-t border-[var(--border)]">
+                  <div className="font-bold text-[var(--text-primary)]">{input.transaction.merchant || 'Luxury Jewels & Bullion'}</div>
+                  <div className="text-[11px] text-[var(--text-secondary)]">Category: Precious Bullion &amp; Liquid Metals</div>
                 </div>
               )}
             </div>
 
             {/* RELATED ENTITIES */}
-            <div className="border border-[#DCE3EE] rounded-lg overflow-hidden bg-[#FAFBFD]">
-              <div className="p-2.5 flex items-center justify-between border-b border-[#E2E8F0]">
-                <span className="text-[10px] font-bold uppercase text-[#64748B]">Graph Relationships</span>
-                <a href="#entity-graph" className="text-[10px] font-bold text-[#3157D5] hover:underline flex items-center gap-0.5">
+            <div className="border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--surface-muted)]">
+              <div className="p-2.5 flex items-center justify-between border-b border-[var(--border)]">
+                <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)]">Graph Relationships</span>
+                <a href="#entity-graph" className="text-[10px] font-bold text-[var(--primary)] hover:underline flex items-center gap-0.5">
                   <span>Graph</span>
                   <ExternalLink className="h-2.5 w-2.5" />
                 </a>
               </div>
-              <div className="p-2.5 bg-white flex flex-wrap gap-1.5">
-                <a href="#entity-graph" className="px-2 py-1 rounded bg-[#F8FAFD] border border-[#DCE3EE] text-[11px] font-mono hover:border-[#3157D5]">
+              <div className="p-2.5 bg-[var(--surface)] flex flex-wrap gap-1.5">
+                <a href="#entity-graph" className="px-2 py-1 rounded bg-[var(--surface-muted)] border border-[var(--border)] text-[11px] font-mono hover:border-[var(--primary)]">
                   {scenario.account?.account_id || 'ACC-1003-SAV'}
                 </a>
-                <a href="#entity-graph" className="px-2 py-1 rounded bg-[#F8FAFD] border border-[#DCE3EE] text-[11px] font-mono hover:border-[#3157D5]">
+                <a href="#entity-graph" className="px-2 py-1 rounded bg-[var(--surface-muted)] border border-[var(--border)] text-[11px] font-mono hover:border-[var(--primary)]">
                   {input.transaction.device_id || 'DEV-1003-ROGUE'}
                 </a>
-                <a href="#entity-graph" className="px-2 py-1 rounded bg-[#F8FAFD] border border-[#DCE3EE] text-[11px] font-mono hover:border-[#3157D5]">
+                <a href="#entity-graph" className="px-2 py-1 rounded bg-[var(--surface-muted)] border border-[var(--border)] text-[11px] font-mono hover:border-[var(--primary)]">
                   {input.transaction.ip_address || '103.21.144.92'}
                 </a>
               </div>
@@ -1983,42 +1984,42 @@ export const InvestigationWorkspace: React.FC = () => {
       </div>
 
       {/* ─── 5. HUMAN-IN-THE-LOOP ACTION BAR ─────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-[#DCE3EE] shadow-xs p-3.5 flex flex-col md:flex-row items-center justify-between gap-3">
-        <div className="text-xs text-[#64748B] flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#EEF2FF] text-[#3157D5] shrink-0">
+      <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs p-3.5 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="text-xs text-[var(--text-secondary)] flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] shrink-0">
             <Lock className="h-3.5 w-3.5" />
           </div>
           <div>
-            <strong className="text-[#172033]">Human-in-the-Loop Authority:</strong>{' '}
-            AI Recommendation: <span className="font-mono font-bold text-[#D95C62]">{riskResult.decision.replace(/_/g, ' ')}</span>. Human confirmation required.
+            <strong className="text-[var(--text-primary)]">Human-in-the-Loop Authority:</strong>{' '}
+            AI Recommendation: <span className="font-mono font-bold text-[var(--danger)]">{riskResult.decision.replace(/_/g, ' ')}</span>. Human confirmation required.
           </div>
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scrollbar-none">
           <button
             onClick={() => handleAction('Allow')}
-            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#DCE3EE] text-[#172033] hover:bg-[#F8FAFD] transition-colors whitespace-nowrap shadow-xs cursor-pointer"
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition-colors whitespace-nowrap shadow-xs cursor-pointer"
           >
             ALLOW
           </button>
           
           <button
             onClick={() => handleAction('Step-Up Verification')}
-            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#DCE3EE] text-[#172033] hover:bg-[#F8FAFD] transition-colors whitespace-nowrap shadow-xs cursor-pointer"
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition-colors whitespace-nowrap shadow-xs cursor-pointer"
           >
             STEP-UP
           </button>
           
           <button
             onClick={() => handleAction('Hold')}
-            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#FEF08A] text-[#D99425] hover:bg-[#FEFCE8] transition-colors whitespace-nowrap shadow-xs cursor-pointer"
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--surface)] border border-amber-500/30 text-[var(--warning)] hover:bg-amber-500/10 transition-colors whitespace-nowrap shadow-xs cursor-pointer"
           >
             HOLD
           </button>
 
           <button
             onClick={() => handleAction('Block & Review')}
-            className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#3157D5] text-[#3157D5] hover:bg-[#EEF2FF] transition-colors whitespace-nowrap shadow-xs cursor-pointer"
+            className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--surface)] border border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors whitespace-nowrap shadow-xs cursor-pointer"
           >
             BLOCK &amp; REVIEW
           </button>
@@ -2027,8 +2028,8 @@ export const InvestigationWorkspace: React.FC = () => {
             onClick={() => handleAction('BLOCK & CREATE CASE')}
             className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap shadow-xs flex items-center gap-1.5 cursor-pointer ${
               riskResult.decision === 'BLOCK_AND_CREATE_CASE'
-                ? 'bg-[#3157D5] text-white hover:bg-[#2044BD] ring-2 ring-[#3157D5]/25'
-                : 'bg-white border border-[#3157D5] text-[#3157D5] hover:bg-[#EEF2FF]'
+                ? 'bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] ring-2 ring-[var(--primary)]/25'
+                : 'bg-[var(--surface)] border border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)]/10'
             }`}
           >
             <Shield className="h-3.5 w-3.5" />
@@ -2037,7 +2038,7 @@ export const InvestigationWorkspace: React.FC = () => {
 
           <button
             onClick={() => handleAction('Freeze Account')}
-            className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-[#FFF1F2] border border-[#FFE4E6] text-[#D95C62] hover:bg-[#D95C62] hover:text-white transition-colors whitespace-nowrap shadow-xs cursor-pointer"
+            className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/10 border border-rose-500/20 text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-colors whitespace-nowrap shadow-xs cursor-pointer"
           >
             FREEZE ACCOUNT
           </button>
@@ -2046,77 +2047,77 @@ export const InvestigationWorkspace: React.FC = () => {
 
       {/* ─── 6. DISPOSITION CONFIRMATION MODAL ───────────────────────────────── */}
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#DCE3EE] shadow-elevated space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-[var(--surface)] rounded-2xl max-w-md w-full p-6 border border-[var(--border)] shadow-elevated space-y-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF1F2] text-[#D95C62] shrink-0 border border-[#FFE4E6]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/10 text-[var(--danger)] shrink-0 border border-rose-500/20">
                 <AlertCircle className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-[#172033]">
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">
                   Confirm Disposition: {showConfirm}?
                 </h3>
-                <p className="text-xs text-[#64748B]">
+                <p className="text-xs text-[var(--text-secondary)]">
                   High-Impact Financial Crime Action Gate
                 </p>
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl border border-[#DCE3EE] bg-[#F8FAFD] space-y-2 text-xs">
+            <div className="p-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] space-y-2 text-xs">
               <div className="flex items-center justify-between font-mono">
-                <span className="text-[#64748B]">Score / Level:</span>
-                <span className="font-extrabold text-[#D95C62]">{riskResult.riskScore} / 100 {riskResult.riskLevel}</span>
+                <span className="text-[var(--text-secondary)]">Score / Level:</span>
+                <span className="font-extrabold text-[var(--danger)]">{riskResult.riskScore} / 100 {riskResult.riskLevel}</span>
               </div>
               <div className="flex items-center justify-between font-mono">
-                <span className="text-[#64748B]">Target Entity:</span>
-                <span className="font-bold text-[#172033]">{input.customer.name} ({input.customer.customer_id})</span>
+                <span className="text-[var(--text-secondary)]">Target Entity:</span>
+                <span className="font-bold text-[var(--text-primary)]">{input.customer.name} ({input.customer.customer_id})</span>
               </div>
               <div className="flex items-center justify-between font-mono">
-                <span className="text-[#64748B]">Transaction:</span>
-                <span className="font-bold text-[#3157D5]">{input.transaction.transaction_id} (₹{input.transaction.amount?.toLocaleString()})</span>
+                <span className="text-[var(--text-secondary)]">Transaction:</span>
+                <span className="font-bold text-[var(--primary)]">{input.transaction.transaction_id} (₹{input.transaction.amount?.toLocaleString()})</span>
               </div>
 
-              <div className="pt-2 border-t border-[#DCE3EE]">
-                <div className="text-[10px] font-bold uppercase text-[#64748B] mb-1">
+              <div className="pt-2 border-t border-[var(--border)]">
+                <div className="text-[10px] font-bold uppercase text-[var(--text-secondary)] mb-1">
                   Converged Decision Evidence:
                 </div>
-                <ul className="space-y-1 text-[11px] text-[#475569]">
+                <ul className="space-y-1 text-[11px] text-[var(--text-secondary)]">
                   <li className="flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#D95C62]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--danger)]" />
                     <span>Unrecognized rogue device signature {safeString(input.transaction.device_id, 'DEV-1003-ROGUE')}</span>
                   </li>
                   <li className="flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#D95C62]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--danger)]" />
                     <span>3 pre-auth failed login attempts followed by credential takeover</span>
                   </li>
                   <li className="flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#D95C62]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--danger)]" />
                     <span>Bengaluru → Mumbai impossible velocity (840 km in 4 minutes)</span>
                   </li>
                   <li className="flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#D95C62]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--danger)]" />
                     <span>Out-of-hours transfer to high-risk jewellery merchant</span>
                   </li>
                 </ul>
               </div>
             </div>
 
-            <p className="text-xs text-[#64748B] leading-relaxed">
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
               Applying this disposition establishes an immutable case in the authoritative ledger, executes account protective safeguards, and logs an investigator cryptographic audit event.
             </p>
 
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#DCE3EE]">
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[var(--border)]">
               <button
                 onClick={() => setShowConfirm(null)}
                 disabled={isSubmitting}
-                className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#CBD5E1] bg-white text-[#64748B] hover:bg-[#F8FAFD] cursor-pointer"
+                className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmAction}
                 disabled={isSubmitting}
-                className="px-4 py-2 text-xs font-bold rounded-lg bg-[#D95C62] text-white hover:bg-[#C54A50] transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 text-xs font-bold rounded-lg bg-[var(--danger)] text-white hover:bg-rose-600 transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
                 {isSubmitting ? (
                   <span>Logging to Ledger...</span>
@@ -2135,76 +2136,76 @@ export const InvestigationWorkspace: React.FC = () => {
       {/* ─── 7. REAL WORKING FULLSCREEN WORKSPACE OVERLAY (Requirement 1 & 2) ─── */}
       {isFullscreen && (
         <div
-          className="fixed inset-0 z-[100] bg-white/98 dark:bg-[#0B101B]/98 backdrop-blur-md flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+          className="fixed inset-0 z-[100] bg-[var(--background)]/98 backdrop-blur-md flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
           role="dialog"
           aria-modal="true"
           aria-label="Investigation Pipeline Fullscreen Topology"
         >
           {/* Top Floating Fullscreen Header & Toolbar */}
-          <div className="h-14 px-5 border-b border-[#DCE3EE] bg-white flex items-center justify-between shrink-0 shadow-xs z-30">
+          <div className="h-14 px-5 border-b border-[var(--border)] bg-[var(--surface)] flex items-center justify-between shrink-0 shadow-xs z-30">
             {/* Left: Exit button & Title */}
             <div className="flex items-center gap-3">
               <button
                 onClick={handleExitFullscreen}
-                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-[#DCE3EE] bg-[#F8FAFD] text-[#172033] hover:bg-[#EEF2FF] hover:border-[#3157D5] transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-primary)] hover:bg-[var(--surface)] hover:border-[var(--primary)] transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
                 title="Exit Fullscreen Mode (Esc)"
               >
-                <ArrowLeft className="h-4 w-4 text-[#3157D5]" />
+                <ArrowLeft className="h-4 w-4 text-[var(--primary)]" />
                 <span>Exit Fullscreen</span>
-                <span className="text-[10px] font-mono text-[#64748B] ml-1 px-1 bg-white rounded border border-[#DCE3EE]">ESC</span>
+                <span className="text-[10px] font-mono text-[var(--text-secondary)] ml-1 px-1 bg-[var(--surface)] rounded border border-[var(--border)]">ESC</span>
               </button>
 
-              <div className="h-5 w-px bg-[#DCE3EE] hidden sm:block" />
+              <div className="h-5 w-px bg-[var(--border)] hidden sm:block" />
 
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-black uppercase text-[#172033] tracking-wide">
+                  <span className="text-xs font-black uppercase text-[var(--text-primary)] tracking-wide">
                     AI INVESTIGATION PIPELINE TOPOLOGY
                   </span>
-                  <span className="badge text-[9px] font-bold bg-[#FFF1F2] text-[#D95C62] border border-[#FFE4E6]">
+                  <span className="badge text-[9px] font-bold bg-rose-500/10 text-[var(--danger)] border border-rose-500/20">
                     {riskResult.riskScore}/100 {riskResult.riskLevel}
                   </span>
                 </div>
-                <div className="text-[10px] text-[#64748B]">
+                <div className="text-[10px] text-[var(--text-secondary)]">
                   11 specialized autonomous agents · {riskResult.triggeredSignals.length} correlated signals · Multi-institution telemetry
                 </div>
               </div>
             </div>
 
             {/* Center: Mini HUD */}
-            <div className="hidden xl:flex items-center gap-3 text-xs font-mono bg-[#F8FAFD] px-3 py-1 rounded-lg border border-[#DCE3EE]">
+            <div className="hidden xl:flex items-center gap-3 text-xs font-mono bg-[var(--surface-muted)] px-3 py-1 rounded-lg border border-[var(--border)]">
               <div className="flex items-center gap-1">
-                <span className="text-[#64748B]">Target:</span>
-                <span className="font-bold text-[#172033]">{input.customer.name}</span>
+                <span className="text-[var(--text-secondary)]">Target:</span>
+                <span className="font-bold text-[var(--text-primary)]">{input.customer.name}</span>
               </div>
               <span>•</span>
               <div className="flex items-center gap-1">
-                <span className="text-[#64748B]">Txn:</span>
-                <span className="font-semibold text-[#3157D5]">{input.transaction.transaction_id}</span>
+                <span className="text-[var(--text-secondary)]">Txn:</span>
+                <span className="font-semibold text-[var(--primary)]">{input.transaction.transaction_id}</span>
               </div>
               <span>•</span>
               <div className="flex items-center gap-1">
-                <span className="text-[#64748B]">Amount:</span>
-                <span className="font-extrabold text-[#172033]">₹{input.transaction.amount?.toLocaleString()}</span>
+                <span className="text-[var(--text-secondary)]">Amount:</span>
+                <span className="font-extrabold text-[var(--text-primary)]">₹{input.transaction.amount?.toLocaleString()}</span>
               </div>
               <span>•</span>
               <div className="flex items-center gap-1">
-                <span className="text-[#64748B]">Action:</span>
-                <span className="font-bold text-[#D95C62]">{riskResult.decision.replace(/_/g, ' ')}</span>
+                <span className="text-[var(--text-secondary)]">Action:</span>
+                <span className="font-bold text-[var(--danger)]">{riskResult.decision.replace(/_/g, ' ')}</span>
               </div>
             </div>
 
             {/* Right: Controls & Drawer toggle */}
             <div className="flex items-center gap-2">
               {/* Layout Switcher */}
-              <div className="flex items-center bg-[#F8FAFD] p-0.5 rounded-lg border border-[#DCE3EE]">
+              <div className="flex items-center bg-[var(--surface-muted)] p-0.5 rounded-lg border border-[var(--border)]">
                 <button
                   onClick={() => {
                     setFullscreenLayout('grid');
                     setTimeout(fitToViewFullscreen, 50);
                   }}
                   className={`px-2 py-1 text-[11px] font-bold rounded cursor-pointer transition-colors ${
-                    fullscreenLayout === 'grid' ? 'bg-white text-[#3157D5] shadow-xs' : 'text-[#64748B] hover:text-[#172033]'
+                    fullscreenLayout === 'grid' ? 'bg-[var(--surface)] text-[var(--primary)] shadow-xs' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                   title="2-Row Adaptive Grid Layout"
                 >
@@ -2216,7 +2217,7 @@ export const InvestigationWorkspace: React.FC = () => {
                     setTimeout(fitToViewFullscreen, 50);
                   }}
                   className={`px-2 py-1 text-[11px] font-bold rounded cursor-pointer transition-colors ${
-                    fullscreenLayout === 'flow' ? 'bg-white text-[#3157D5] shadow-xs' : 'text-[#64748B] hover:text-[#172033]'
+                    fullscreenLayout === 'flow' ? 'bg-[var(--surface)] text-[var(--primary)] shadow-xs' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                   title="Single-Row Linear Flow"
                 >
@@ -2224,14 +2225,14 @@ export const InvestigationWorkspace: React.FC = () => {
                 </button>
               </div>
 
-              <div className="h-4 w-px bg-[#DCE3EE]" />
+              <div className="h-4 w-px bg-[var(--border)]" />
 
               <button
                 onClick={() => setIsPlayingDemo(!isPlayingDemo)}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
                   isPlayingDemo
-                    ? 'bg-[#3157D5] text-white border-[#3157D5] animate-pulse'
-                    : 'bg-white text-[#3157D5] border-[#DCE3EE] hover:bg-[#EEF2FF]'
+                    ? 'bg-[var(--primary)] text-white border-[var(--primary)] animate-pulse'
+                    : 'bg-[var(--surface)] text-[var(--primary)] border-[var(--border)] hover:bg-[var(--surface-muted)]'
                 }`}
                 title="Play/Pause Pipeline (Space)"
               >
@@ -2242,7 +2243,7 @@ export const InvestigationWorkspace: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <Play className="h-3.5 w-3.5 text-[#3157D5]" />
+                    <Play className="h-3.5 w-3.5 text-[var(--primary)]" />
                     <span>Play Pipeline</span>
                   </>
                 )}
@@ -2250,41 +2251,41 @@ export const InvestigationWorkspace: React.FC = () => {
 
               <button
                 onClick={zoomIn}
-                className="p-1.5 rounded-lg border border-[#DCE3EE] bg-white text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFD] cursor-pointer"
+                className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
                 title="Zoom In (+)"
               >
                 <ZoomIn className="h-4 w-4" />
               </button>
               <button
                 onClick={zoomOut}
-                className="p-1.5 rounded-lg border border-[#DCE3EE] bg-white text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFD] cursor-pointer"
+                className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
                 title="Zoom Out (-)"
               >
                 <ZoomOut className="h-4 w-4" />
               </button>
               <button
                 onClick={fitToViewFullscreen}
-                className="p-1.5 rounded-lg border border-[#DCE3EE] bg-white text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFD] cursor-pointer"
+                className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
                 title="Fit to Window (F)"
               >
                 <Check className="h-4 w-4" />
               </button>
               <button
                 onClick={resetLayout}
-                className="p-1.5 rounded-lg border border-[#DCE3EE] bg-white text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFD] cursor-pointer"
+                className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
                 title="Reset Layout (R)"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
 
-              <div className="h-4 w-px bg-[#DCE3EE]" />
+              <div className="h-4 w-px bg-[var(--border)]" />
 
               <button
                 onClick={() => setShowDrawerInFullscreen(!showDrawerInFullscreen)}
                 className={`px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-colors cursor-pointer flex items-center gap-1 ${
                   showDrawerInFullscreen
-                    ? 'bg-[#3157D5] text-white border-[#3157D5]'
-                    : 'bg-white text-[#64748B] border-[#DCE3EE] hover:bg-[#F8FAFD]'
+                    ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
+                    : 'bg-[var(--surface)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--surface-muted)]'
                 }`}
                 title="Toggle Intelligence Drawer"
               >
@@ -2294,7 +2295,7 @@ export const InvestigationWorkspace: React.FC = () => {
 
               <button
                 onClick={handleExitFullscreen}
-                className="p-1.5 rounded-lg border border-[#DCE3EE] bg-white text-[#64748B] hover:text-[#D95C62] hover:bg-[#FFF1F2] cursor-pointer"
+                className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--danger)] hover:bg-rose-500/10 cursor-pointer"
                 title="Close Fullscreen (Esc)"
               >
                 <X className="h-4 w-4" />
@@ -2310,9 +2311,9 @@ export const InvestigationWorkspace: React.FC = () => {
               onPointerDown={handleFullscreenPointerDown}
               onPointerMove={handleFullscreenPointerMove}
               onPointerUp={handleFullscreenPointerUp}
-              className="flex-1 h-full relative overflow-hidden bg-[#FAFBFD] cursor-grab active:cursor-grabbing select-none"
+              className="flex-1 h-full relative overflow-hidden bg-[var(--background)] cursor-grab active:cursor-grabbing select-none"
               style={{
-                backgroundImage: 'radial-gradient(#CBD5E1 0.75px, transparent 0.75px)',
+                backgroundImage: resolvedTheme === 'dark' ? 'radial-gradient(#22354D 1px, transparent 1px)' : 'radial-gradient(#CBD5E1 0.75px, transparent 0.75px)',
                 backgroundSize: '20px 20px'
               }}
             >
@@ -2338,7 +2339,7 @@ export const InvestigationWorkspace: React.FC = () => {
                       markerHeight="6"
                       orient="auto-start-reverse"
                     >
-                      <path d="M 0 1 L 9 5 L 0 9 z" fill="#94A3B8" />
+                      <path d="M 0 1 L 9 5 L 0 9 z" fill={resolvedTheme === 'dark' ? '#304761' : '#94A3B8'} />
                     </marker>
                     <marker
                       id="arrow-fs-active"
@@ -2349,7 +2350,7 @@ export const InvestigationWorkspace: React.FC = () => {
                       markerHeight="6"
                       orient="auto-start-reverse"
                     >
-                      <path d="M 0 1 L 9 5 L 0 9 z" fill="#3157D5" />
+                      <path d="M 0 1 L 9 5 L 0 9 z" fill="var(--primary)" />
                     </marker>
                   </defs>
 
@@ -2369,14 +2370,14 @@ export const InvestigationWorkspace: React.FC = () => {
                     const isEdgeCritical =
                       meta.status === 'CRITICAL' || nextMeta.status === 'CRITICAL';
 
-                    let strokeColor = '#CBD5E1';
+                    let strokeColor = resolvedTheme === 'dark' ? '#22354D' : '#CBD5E1';
                     let markerId = 'url(#arrow-fs-default)';
 
                     if (isSourceOrTargetSelected) {
-                      strokeColor = '#3157D5';
+                      strokeColor = 'var(--primary)';
                       markerId = 'url(#arrow-fs-active)';
                     } else if (isEdgeCritical) {
-                      strokeColor = '#FDA4AF';
+                      strokeColor = resolvedTheme === 'dark' ? 'rgba(255, 107, 118, 0.4)' : '#FDA4AF';
                     }
 
                     // Cubic Bezier curve for smooth transition
@@ -2404,7 +2405,7 @@ export const InvestigationWorkspace: React.FC = () => {
                             cx={(x1 + x2) / 2}
                             cy={(y1 + y2) / 2}
                             r="6"
-                            fill="#3157D5"
+                            fill="var(--primary)"
                             className="animate-ping"
                           />
                         )}
@@ -2436,12 +2437,12 @@ export const InvestigationWorkspace: React.FC = () => {
                           width: `${pos.w}px`,
                           height: `${pos.h}px`,
                         }}
-                        className={`canvas-node absolute bg-white rounded-xl border flex flex-col justify-between p-3.5 cursor-grab active:cursor-grabbing transition-all duration-200 shadow-xs ${
+                        className={`canvas-node absolute bg-[var(--surface)] rounded-xl border flex flex-col justify-between p-3.5 cursor-grab active:cursor-grabbing transition-all duration-200 shadow-xs ${
                           isSelected
-                            ? 'border-[#3157D5] ring-2 ring-[#3157D5]/30 shadow-card -translate-y-1.5 scale-103 z-20'
+                            ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/30 shadow-card -translate-y-1.5 scale-103 z-20'
                             : isCurrentlyPlaying
-                            ? 'border-[#3157D5] ring-2 ring-[#3157D5]/40 shadow-card animate-pulse z-20'
-                            : 'border-[#DCE3EE] hover:border-[#CBD5E1] hover:shadow-xs z-10 opacity-95 hover:opacity-100 hover:-translate-y-1'
+                            ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/40 shadow-card animate-pulse z-20'
+                            : 'border-[var(--border)] hover:border-[var(--border-strong)] hover:shadow-xs z-10 opacity-95 hover:opacity-100 hover:-translate-y-1'
                         }`}
                       >
                         <div
@@ -2451,21 +2452,21 @@ export const InvestigationWorkspace: React.FC = () => {
 
                         {/* Top: Stage + Icon + Status symbol */}
                         <div className="flex items-center justify-between pt-0.5">
-                          <span className="font-mono text-xs font-black text-[#64748B]">
+                          <span className="font-mono text-xs font-black text-[var(--text-secondary)]">
                             {meta.stageNumber}
                           </span>
                           <div
                             className="p-1.5 rounded-lg"
-                            style={{ backgroundColor: meta.bgLight, color: meta.accentColor }}
+                            style={{ backgroundColor: `${meta.accentColor}20`, color: meta.accentColor }}
                           >
                             <Icon className="h-4 w-4" />
                           </div>
                           <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
                             isCompletedInPlayback
-                              ? 'text-[#159A75] bg-[#F0FDF4]'
+                              ? 'text-[var(--success)] bg-emerald-500/10'
                               : meta.status === 'CRITICAL'
-                              ? 'text-[#D95C62] bg-[#FFF1F2]'
-                              : 'text-[#159A75] bg-[#F0FDF4]'
+                              ? 'text-[var(--danger)] bg-rose-500/10'
+                              : 'text-[var(--success)] bg-emerald-500/10'
                           }`}>
                             {isCompletedInPlayback ? '✓ VERIFIED' : meta.status === 'CRITICAL' ? '! CRITICAL' : '✓ OK'}
                           </span>
@@ -2473,20 +2474,20 @@ export const InvestigationWorkspace: React.FC = () => {
 
                         {/* Middle: Agent Title */}
                         <div>
-                          <div className="text-sm font-black text-[#172033] tracking-tight uppercase leading-tight truncate">
+                          <div className="text-sm font-black text-[var(--text-primary)] tracking-tight uppercase leading-tight truncate">
                             {meta.name}
                           </div>
-                          <div className="text-[10px] font-semibold text-[#64748B] tracking-wider uppercase">
+                          <div className="text-[10px] font-semibold text-[var(--text-secondary)] tracking-wider uppercase">
                             AGENT · {meta.domain}
                           </div>
                         </div>
 
                         {/* Bottom: Status & Latency + Points */}
-                        <div className="flex items-center justify-between pt-1.5 border-t border-[#F1F5F9]">
-                          <span className="font-mono text-[10px] text-[#64748B]">
+                        <div className="flex items-center justify-between pt-1.5 border-t border-[var(--border)]">
+                          <span className="font-mono text-[10px] text-[var(--text-secondary)]">
                             {meta.latency}
                           </span>
-                          <span className="font-mono text-[10px] font-bold text-[#D95C62] bg-[#FFF1F2] px-1.5 py-0.5 rounded border border-[#FFE4E6]">
+                          <span className="font-mono text-[10px] font-bold text-[var(--danger)] bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
                             {meta.riskContribution}
                           </span>
                         </div>
@@ -2497,7 +2498,7 @@ export const InvestigationWorkspace: React.FC = () => {
               </div>
 
               {/* Fullscreen floating hint */}
-              <div className="absolute bottom-4 left-5 pointer-events-none text-xs font-mono text-[#94A3B8] bg-white/90 px-3 py-1.5 rounded-lg border border-[#DCE3EE] shadow-xs backdrop-blur-xs flex items-center gap-2">
+              <div className="absolute bottom-4 left-5 pointer-events-none text-xs font-mono text-[var(--text-muted)] bg-[var(--surface)]/90 px-3 py-1.5 rounded-lg border border-[var(--border)] shadow-xs backdrop-blur-xs flex items-center gap-2">
                 <span>Pan: Click + Drag Canvas</span>
                 <span>•</span>
                 <span>Move Nodes: Click + Drag Card</span>
@@ -2508,26 +2509,26 @@ export const InvestigationWorkspace: React.FC = () => {
 
             {/* Docked / Floating Intelligence Drawer in Fullscreen Mode */}
             {showDrawerInFullscreen && (
-              <div className="w-[360px] h-full bg-white border-l border-[#DCE3EE] shadow-elevated p-4 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200 z-20">
+              <div className="w-[360px] h-full bg-[var(--surface)] border-l border-[var(--border)] shadow-elevated p-4 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200 z-20">
                 <div className="space-y-3.5">
-                  <div className="flex items-center justify-between border-b border-[#DCE3EE] pb-2.5">
+                  <div className="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
                     <div className="flex items-center gap-2">
                       <div
                         className="flex h-8 w-8 items-center justify-center rounded-lg shadow-xs"
-                        style={{ backgroundColor: selectedAgentDetails.meta.bgLight, color: selectedAgentDetails.meta.accentColor }}
+                        style={{ backgroundColor: `${selectedAgentDetails.meta.accentColor}20`, color: selectedAgentDetails.meta.accentColor }}
                       >
                         {React.createElement(selectedAgentDetails.meta.icon, { className: 'h-4 w-4' })}
                       </div>
                       <div>
-                        <h3 className="text-xs font-extrabold text-[#172033] uppercase">
+                        <h3 className="text-xs font-extrabold text-[var(--text-primary)] uppercase">
                           {selectedAgentDetails.meta.name} Agent
                         </h3>
-                        <div className="text-[10px] text-[#64748B]">Stage {selectedAgentDetails.meta.stageNumber} · {selectedAgentDetails.meta.domain}</div>
+                        <div className="text-[10px] text-[var(--text-secondary)]">Stage {selectedAgentDetails.meta.stageNumber} · {selectedAgentDetails.meta.domain}</div>
                       </div>
                     </div>
                     <button
                       onClick={() => setShowDrawerInFullscreen(false)}
-                      className="p-1 rounded text-[#94A3B8] hover:text-[#172033] hover:bg-[#F8FAFD]"
+                      className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
                       title="Collapse Drawer"
                     >
                       <X className="h-4 w-4" />
@@ -2535,48 +2536,48 @@ export const InvestigationWorkspace: React.FC = () => {
                   </div>
 
                   {/* Findings */}
-                  <div className="p-3 rounded-lg border border-[#DCE3EE] bg-[#F8FAFD] space-y-1">
-                    <span className="text-[10px] font-bold uppercase text-[#64748B] block font-mono">
+                  <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)] block font-mono">
                       Analytical Finding
                     </span>
-                    <p className="text-xs text-[#172033] font-medium leading-relaxed">
+                    <p className="text-xs text-[var(--text-primary)] font-medium leading-relaxed">
                       {selectedAgentDetails.finding}
                     </p>
                   </div>
 
                   {/* Metrics */}
-                  <div className="p-3 rounded-lg border border-[#DCE3EE] bg-white space-y-1.5 font-mono text-xs">
-                    <span className="text-[10px] font-bold uppercase text-[#64748B] block font-sans mb-1">Telemetry Metrics</span>
+                  <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] space-y-1.5 font-mono text-xs">
+                    <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)] block font-sans mb-1">Telemetry Metrics</span>
                     {selectedAgentDetails.metrics.map((m, idx) => (
                       <div key={idx} className="flex justify-between text-[11px]">
-                        <span className="text-[#64748B]">{m.label}:</span>
-                        <span className="font-bold text-[#172033]">{m.value}</span>
+                        <span className="text-[var(--text-secondary)]">{m.label}:</span>
+                        <span className="font-bold text-[var(--text-primary)]">{m.value}</span>
                       </div>
                     ))}
                   </div>
 
                   {/* Evidence */}
                   <div className="space-y-1">
-                    <span className="text-[10px] font-bold uppercase text-[#64748B] block">Evidence Cryptographic Signatures</span>
+                    <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)] block">Evidence Cryptographic Signatures</span>
                     <div className="space-y-1 text-xs">
                       {selectedAgentDetails.evidence.map((ev, idx) => (
-                        <div key={idx} className="p-2 rounded bg-[#F8FAFD] border border-[#DCE3EE] flex justify-between">
-                          <span className="text-[#64748B]">{ev.key}:</span>
-                          <span className="font-mono font-bold text-[#172033]">{ev.val}</span>
+                        <div key={idx} className="p-2 rounded bg-[var(--surface-muted)] border border-[var(--border)] flex justify-between">
+                          <span className="text-[var(--text-secondary)]">{ev.key}:</span>
+                          <span className="font-mono font-bold text-[var(--text-primary)]">{ev.val}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-[#F1F5F9] text-xs">
-                  <div className="flex items-center justify-between text-[11px] text-[#64748B]">
+                <div className="pt-3 border-t border-[var(--border)] text-xs">
+                  <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
                     <span>Attribution:</span>
-                    <span className="font-bold font-mono text-[#D95C62]">{selectedAgentDetails.riskContribution}</span>
+                    <span className="font-bold font-mono text-[var(--danger)]">{selectedAgentDetails.riskContribution}</span>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-[#64748B] mt-1">
+                  <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] mt-1">
                     <span>Confidence:</span>
-                    <span className="font-bold font-mono text-[#159A75]">{selectedAgentDetails.confidence}</span>
+                    <span className="font-bold font-mono text-[var(--success)]">{selectedAgentDetails.confidence}</span>
                   </div>
                 </div>
               </div>

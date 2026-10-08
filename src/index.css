@@ -2,110 +2,151 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── INSTITUTIONAL FINTECH DESIGN TOKENS ────────────────────────────────────── */
+/* ─── UNIFIED FINGUARD GLOBAL DESIGN TOKENS ────────────────────────────────────── */
 :root {
   color-scheme: light;
 
-  /* Global Color Direction (Institutional + Premium Palette) */
-  --bg-root: #F7F9FC;
-  --bg-surface: #FFFFFF;
-  --bg-surface-raised: #FFFFFF;
-  --bg-surface-subtle: #F8FAFD;
-  --bg-surface-hover: #F1F4F9;
-
-  /* Borders */
-  --border-subtle: #DCE3EE;
-  --border-default: #CBD5E1;
-  --border-strong: #94A3B8;
-
-  /* Typography Colors */
+  /* Standardized Light Tokens */
+  --background: #F6F8FC;
+  --foreground: #172033;
+  --surface: #FFFFFF;
+  --surface-elevated: #FFFFFF;
+  --surface-muted: #F1F4F9;
+  --border: #DCE3EE;
+  --border-strong: #C7D2E2;
   --text-primary: #172033;
-  --text-secondary: #64748B;
-  --text-muted: #64748B;
-  --text-subtle: #94A3B8;
+  --text-secondary: #52627A;
+  --text-muted: #7B879A;
+  --text-inverse: #FFFFFF;
 
-  /* Premium Brand & Accent Palette */
-  --accent: #3157D5;          /* Sapphire Blue */
-  --accent-hover: #2645AB;
-  --accent-secondary: #6C63D9;/* Soft Violet */
+  --primary: #3157D5;
+  --primary-hover: #2748B8;
+  --secondary: #6C63D9;
+  --accent: #159A9C;
+  --success: #159A75;
+  --warning: #D99425;
+  --danger: #D95C62;
+  --info: #3B82F6;
+
+  --grid-color: rgba(203, 213, 225, 0.45);
+  --hero-glow-1: rgba(49, 87, 213, 0.08);
+  --hero-grid-line: rgba(23, 32, 51, 0.04);
+
+  /* Semantic Aliases for Existing Components */
+  --bg-root: var(--background);
+  --bg-surface: var(--surface);
+  --bg-surface-raised: var(--surface-elevated);
+  --bg-surface-subtle: var(--surface-muted);
+  --bg-surface-hover: #E9EEF6;
+
+  --border-subtle: var(--border);
+  --border-default: var(--border);
+
+  --accent-hover: var(--primary-hover);
+  --accent-secondary: var(--secondary);
   --accent-light: #EEF2FF;
   --accent-dim: rgba(49, 87, 213, 0.08);
 
-  --color-sapphire: #3157D5;
-  --color-violet: #6C63D9;
-  --color-teal: #159A9C;
-  --color-emerald: #159A75;
-  --color-amber: #D99425;
-  --color-coral: #D95C62;
+  --color-sapphire: var(--primary);
+  --color-violet: var(--secondary);
+  --color-teal: var(--accent);
+  --color-emerald: var(--success);
+  --color-amber: var(--warning);
+  --color-coral: var(--danger);
 
-  /* Semantic Risk Colors (Restrained & Meaningful) */
-  --risk-low: #159A75;        /* Emerald */
+  --risk-low: var(--success);
   --risk-low-bg: #F0FDF4;
   --risk-low-border: #BBF7D0;
 
-  --risk-medium: #D99425;     /* Amber */
+  --risk-medium: var(--warning);
   --risk-medium-bg: #FEFCE8;
   --risk-medium-border: #FEF08A;
 
-  --risk-high: #D95C62;       /* Coral / Orange */
+  --risk-high: var(--danger);
   --risk-high-bg: #FFF7ED;
   --risk-high-border: #FED7AA;
 
-  --risk-critical: #D95C62;   /* Coral / Crimson */
+  --risk-critical: var(--danger);
   --risk-critical-bg: #FEF2F2;
   --risk-critical-border: #FEE2E2;
 
-  /* Shadows (Institutional & Clean) */
   --shadow-xs: 0 1px 2px rgba(23, 32, 51, 0.04);
   --shadow-card: 0 1px 3px rgba(23, 32, 51, 0.04), 0 1px 2px rgba(23, 32, 51, 0.02);
   --shadow-elevated: 0 10px 25px -5px rgba(23, 32, 51, 0.08), 0 8px 10px -6px rgba(23, 32, 51, 0.04);
 }
 
-/* ─── DARK THEME PRESERVATION (CLEAN OBSIDIAN) ──────────────────────────────── */
+/* ─── STANDARDIZED DARK FINTECH THEME ────────────────────────────────────────── */
 .dark,
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --bg-root: #0B0F17;
-  --bg-surface: #111726;
-  --bg-surface-raised: #151D30;
-  --bg-surface-subtle: #182238;
-  --bg-surface-hover: #1E2B46;
+  /* Standardized Dark Tokens */
+  --background: #07111F;
+  --foreground: #F4F7FB;
+  --surface: #0D1A2B;
+  --surface-elevated: #122238;
+  --surface-muted: #16263A;
+  --border: #22354D;
+  --border-strong: #304761;
+  --text-primary: #F4F7FB;
+  --text-secondary: #B7C3D4;
+  --text-muted: #8291A7;
+  --text-inverse: #07111F;
 
-  --border-subtle: #1E2B46;
-  --border-default: #28395B;
-  --border-strong: #3D5380;
+  --primary: #5B7CFF;
+  --primary-hover: #718EFF;
+  --secondary: #8B7CFF;
+  --accent: #22C7C9;
+  --success: #35C995;
+  --warning: #F2B84B;
+  --danger: #FF6B76;
+  --info: #5BA3FF;
 
-  --text-primary: #F1F5F9;
-  --text-secondary: #CBD5E1;
-  --text-muted: #8496B3;
-  --text-subtle: #5A6D8D;
+  --grid-color: rgba(34, 53, 77, 0.5);
+  --hero-glow-1: rgba(91, 124, 255, 0.16);
+  --hero-grid-line: rgba(255, 255, 255, 0.04);
 
-  --accent: #5B6FEA;
-  --accent-hover: #485DD4;
-  --accent-secondary: #7485F2;
-  --accent-light: rgba(91, 111, 234, 0.12);
-  --accent-dim: rgba(91, 111, 234, 0.06);
+  /* Semantic Aliases for Existing Components */
+  --bg-root: var(--background);
+  --bg-surface: var(--surface);
+  --bg-surface-raised: var(--surface-elevated);
+  --bg-surface-subtle: var(--surface-muted);
+  --bg-surface-hover: #1E334D;
 
-  --risk-low: #22C55E;
-  --risk-low-bg: rgba(34, 197, 94, 0.1);
-  --risk-low-border: rgba(34, 197, 94, 0.25);
+  --border-subtle: var(--border);
+  --border-default: var(--border);
 
-  --risk-medium: #EAB308;
-  --risk-medium-bg: rgba(234, 179, 8, 0.1);
-  --risk-medium-border: rgba(234, 179, 8, 0.25);
+  --accent-hover: var(--primary-hover);
+  --accent-secondary: var(--secondary);
+  --accent-light: rgba(91, 124, 255, 0.14);
+  --accent-dim: rgba(91, 124, 255, 0.08);
 
-  --risk-high: #F97316;
-  --risk-high-bg: rgba(249, 115, 22, 0.1);
-  --risk-high-border: rgba(249, 115, 22, 0.25);
+  --color-sapphire: var(--primary);
+  --color-violet: var(--secondary);
+  --color-teal: var(--accent);
+  --color-emerald: var(--success);
+  --color-amber: var(--warning);
+  --color-coral: var(--danger);
 
-  --risk-critical: #EF4444;
-  --risk-critical-bg: rgba(239, 68, 68, 0.1);
-  --risk-critical-border: rgba(239, 68, 68, 0.25);
+  --risk-low: var(--success);
+  --risk-low-bg: rgba(53, 201, 149, 0.12);
+  --risk-low-border: rgba(53, 201, 149, 0.28);
+
+  --risk-medium: var(--warning);
+  --risk-medium-bg: rgba(242, 184, 75, 0.12);
+  --risk-medium-border: rgba(242, 184, 75, 0.28);
+
+  --risk-high: var(--danger);
+  --risk-high-bg: rgba(255, 107, 118, 0.12);
+  --risk-high-border: rgba(255, 107, 118, 0.28);
+
+  --risk-critical: var(--danger);
+  --risk-critical-bg: rgba(255, 107, 118, 0.16);
+  --risk-critical-border: rgba(255, 107, 118, 0.32);
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.55);
 }
 
 * {
@@ -330,6 +371,95 @@ body {
   to {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* ─── CINEMATIC HERO & FRAUD NETWORK ANIMATIONS ────────────────────────────── */
+@keyframes beam-flow {
+  0% { stroke-dashoffset: 40; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes beam-flow-reverse {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 40; }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-7px) rotate(0.5deg); }
+}
+
+@keyframes float-reverse {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(7px) rotate(-0.5deg); }
+}
+
+@keyframes pulse-halo {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.15); opacity: 0.8; }
+}
+
+@keyframes hud-stream-glow {
+  0%, 100% { border-color: rgba(34, 211, 238, 0.25); }
+  50% { border-color: rgba(49, 87, 213, 0.5); }
+}
+
+.animate-beam {
+  stroke-dasharray: 6 6;
+  animation: beam-flow 2s linear infinite;
+}
+
+.animate-beam-reverse {
+  stroke-dasharray: 6 6;
+  animation: beam-flow-reverse 2s linear infinite;
+}
+
+.animate-float-slow {
+  animation: float-slow 5s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 6s ease-in-out infinite;
+}
+
+.animate-pulse-halo {
+  animation: pulse-halo 3s ease-in-out infinite;
+}
+
+.animate-hud-stream {
+  animation: hud-stream-glow 4s ease-in-out infinite;
+}
+
+.hero-grid-bg {
+  background-image: 
+    radial-gradient(circle at 50% 30%, var(--hero-glow-1) 0%, transparent 60%),
+    linear-gradient(to right, var(--hero-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--hero-grid-line) 1px, transparent 1px);
+  background-size: 100% 100%, 40px 40px, 40px 40px;
+}
+
+/* ─── ACCESSIBILITY: PREFERS-REDUCED-MOTION ─────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-beam,
+  .animate-beam-reverse,
+  .animate-float-slow,
+  .animate-float-reverse,
+  .animate-pulse-halo,
+  .animate-hud-stream,
+  .animate-pulse-ring,
+  .animate-float-1,
+  .animate-float-2 {
+    animation: none !important;
   }
 }
 

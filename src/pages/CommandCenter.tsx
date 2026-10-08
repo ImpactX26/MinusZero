@@ -19,6 +19,7 @@ import { simulateScenario } from '../lib/simulator';
 import { SYNTHETIC_TRANSACTIONS } from '../data/scenarios';
 import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { transactionsCol, casesCol } from '../firebase/collections';
+import { useTheme } from '../context/ThemeContext';
 
 // ─── RISK LEVEL CONFIG ────────────────────────────────────────────────────────
 const riskConfig = {
@@ -48,7 +49,7 @@ const riskConfig = {
   },
 };
 
-// ─── STAT CARD (CLEAN WHITE + COLORED ICON CONTAINER + ACCENT LINE) ─────────
+// ─── STAT CARD (THEME-AWARE + COLORED ICON CONTAINER + ACCENT LINE) ─────────
 const StatCard: React.FC<{
   icon: React.ElementType;
   label: string;
@@ -60,7 +61,7 @@ const StatCard: React.FC<{
   trend?: string;
 }> = ({ icon: Icon, label, value, sub, accentColor, iconBg, iconColor, trend }) => {
   return (
-    <div className="bg-white rounded-xl p-4.5 flex flex-col justify-between min-h-[110px] border border-[#DCE3EE] shadow-xs relative overflow-hidden transition-all hover:border-[#CBD5E1] hover:shadow-card">
+    <div className="bg-[var(--surface)] rounded-xl p-4.5 flex flex-col justify-between min-h-[110px] border border-[var(--border)] shadow-xs relative overflow-hidden transition-all hover:border-[var(--border-strong)] hover:shadow-card">
       {/* Subtle top accent line */}
       <div 
         className="absolute top-0 left-0 right-0 h-1" 
@@ -68,7 +69,7 @@ const StatCard: React.FC<{
       />
 
       <div className="flex items-center justify-between">
-        <div className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
+        <div className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
           {label}
         </div>
         <div 
@@ -80,10 +81,10 @@ const StatCard: React.FC<{
       </div>
       
       <div className="mt-2.5">
-        <div className="text-2xl font-extrabold text-[#172033] font-mono tracking-tight">
+        <div className="text-2xl font-extrabold text-[var(--text-primary)] font-mono tracking-tight">
           {value}
         </div>
-        <div className="flex items-center justify-between text-[11px] text-[#64748B] mt-1 font-medium">
+        <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] mt-1 font-medium">
           {sub && <span className="truncate">{sub}</span>}
           {trend && (
             <span className="text-[10px] font-bold text-[#159A75] font-mono ml-auto">
@@ -132,54 +133,54 @@ const ScenarioCard: React.FC<ScenarioCardProps> = ({
 
   return (
     <div
-      className={`bg-white rounded-xl flex flex-col border transition-all shadow-xs overflow-hidden ${
-        active ? 'border-[#3157D5] ring-2 ring-[#3157D5]/20 shadow-md' : 'border-[#DCE3EE] hover:border-[#CBD5E1]'
+      className={`bg-[var(--surface)] rounded-xl flex flex-col border transition-all shadow-xs overflow-hidden ${
+        active ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/20 shadow-md' : 'border-[var(--border)] hover:border-[var(--border-strong)]'
       }`}
     >
       <div className={`px-3 py-1.5 border-b text-[11px] font-semibold flex justify-between items-center ${cfg.bgColor} ${cfg.borderColor} ${cfg.color}`}>
         <span>{scenarioLabel}</span>
-        <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-white/70 border border-current">{cfg.label}</span>
+        <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-white/70 dark:bg-black/40 border border-current">{cfg.label}</span>
       </div>
 
       <div className="p-3.5 flex-1 flex flex-col gap-2.5">
         <div className="flex items-start justify-between">
           <div>
-            <div className="text-xs font-bold text-[#172033]">{customerName}</div>
-            <div className="font-mono text-[10px] text-[#64748B]">{customerId}</div>
+            <div className="text-xs font-bold text-[var(--text-primary)]">{customerName}</div>
+            <div className="font-mono text-[10px] text-[var(--text-secondary)]">{customerId}</div>
           </div>
           <div className="text-right">
-            <div className="text-xs font-extrabold text-[#172033] font-mono">{amount}</div>
-            <div className="text-[10px] text-[#64748B] font-mono">{time}</div>
+            <div className="text-xs font-extrabold text-[var(--text-primary)] font-mono">{amount}</div>
+            <div className="text-[10px] text-[var(--text-secondary)] font-mono">{time}</div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-xs pt-1.5 border-t border-[#F1F4F9]">
+        <div className="grid grid-cols-2 gap-2 text-xs pt-1.5 border-t border-[var(--border)]">
           <div className="flex flex-col gap-1 text-[11px]">
-            <div className="flex items-center gap-1.5 text-[#64748B]">
-              <MapPin className="h-3 w-3 shrink-0 text-[#3157D5]" />
+            <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-[#3157D5]" />
               <span className="truncate">{city}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-[#64748B]">
-              <Smartphone className="h-3 w-3 shrink-0 text-[#D99425]" />
+            <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+              <Smartphone className="h-3.5 w-3.5 shrink-0 text-[#D99425]" />
               <span className="truncate">{device}</span>
             </div>
           </div>
           <div className="flex items-end justify-end">
-            <div className="text-[10px] text-right font-mono font-semibold text-[#172033] bg-[#F8FAFD] px-2 py-0.5 rounded border border-[#DCE3EE]">
+            <div className="text-[10px] text-right font-mono font-semibold text-[var(--text-primary)] bg-[var(--surface-muted)] px-2 py-0.5 rounded border border-[var(--border)]">
               {outcome}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="p-2.5 border-t border-[#DCE3EE] bg-[#F8FAFD]">
+      <div className="p-2.5 border-t border-[var(--border)] bg-[var(--surface-muted)]">
         <button
           onClick={() => onRun(id)}
           disabled={disabled}
           className={`w-full py-1.5 flex items-center justify-center gap-2 text-xs font-semibold rounded-lg transition-all shadow-xs ${
             active
-              ? 'bg-[#3157D5] text-white cursor-wait'
-              : 'bg-white text-[#172033] border border-[#DCE3EE] hover:bg-[#F1F4F9] hover:border-[#CBD5E1]'
+              ? 'bg-[var(--primary)] text-white cursor-wait'
+              : 'bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]'
           }`}
         >
           {active ? (
@@ -189,7 +190,7 @@ const ScenarioCard: React.FC<ScenarioCardProps> = ({
             </>
           ) : (
             <>
-              <Play className="h-3.5 w-3.5 text-[#3157D5]" />
+              <Play className="h-3.5 w-3.5 text-[var(--primary)]" />
               Run Scenario
             </>
           )}
@@ -206,46 +207,46 @@ const SimulationResultPanel: React.FC<{ result: SimulationResult; simRef: any }>
 }) => (
   <div ref={simRef} className="mt-6 animate-in fade-in duration-300">
     {result.status === 'ERROR' ? (
-      <div className="bg-white rounded-xl border border-[#FFE4E6] p-5 flex items-start gap-3 shadow-xs">
-        <AlertCircle className="h-5 w-5 text-[#D95C62] shrink-0 mt-0.5" />
+      <div className="bg-[var(--surface)] rounded-xl border border-[var(--danger)]/30 p-5 flex items-start gap-3 shadow-xs">
+        <AlertCircle className="h-5 w-5 text-[var(--danger)] shrink-0 mt-0.5" />
         <div>
-          <h3 className="text-xs font-bold text-[#D95C62]">Simulation Failed</h3>
-          <p className="text-xs text-[#64748B] mt-1">{result.next_stage}</p>
+          <h3 className="text-xs font-bold text-[var(--danger)]">Simulation Failed</h3>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">{result.next_stage}</p>
         </div>
       </div>
     ) : (
-      <div className="bg-white rounded-xl border border-[#DCE3EE] shadow-xs overflow-hidden">
-        <div className="px-5 py-3 border-b border-[#DCE3EE] flex items-center justify-between bg-[#F8FAFD]">
+      <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs overflow-hidden">
+        <div className="px-5 py-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface-muted)]">
           <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="h-4 w-4 text-[#159A75]" />
-            <h3 className="text-xs font-bold text-[#172033]">
+            <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
+            <h3 className="text-xs font-bold text-[var(--text-primary)]">
               Simulation Complete: {result.scenario_name}
             </h3>
           </div>
-          <span className="font-mono text-[11px] text-[#64748B]">{result.timestamp}</span>
+          <span className="font-mono text-[11px] text-[var(--text-secondary)]">{result.timestamp}</span>
         </div>
 
         <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           <div className="space-y-3">
             <div>
-              <div className="text-[10px] uppercase text-[#64748B] font-bold">Transaction ID</div>
-              <div className="text-sm font-bold font-mono text-[#172033] mt-0.5">{result.formatted_amount}</div>
-              <div className="font-mono text-[11px] text-[#3157D5] font-semibold">{result.transaction.transaction_id}</div>
+              <div className="text-[10px] uppercase text-[var(--text-secondary)] font-bold">Transaction ID</div>
+              <div className="text-sm font-bold font-mono text-[var(--text-primary)] mt-0.5">{result.formatted_amount}</div>
+              <div className="font-mono text-[11px] text-[var(--primary)] font-semibold">{result.transaction.transaction_id}</div>
             </div>
             <div>
-              <div className="text-[10px] uppercase text-[#64748B] font-bold">Customer</div>
-              <div className="text-xs font-semibold text-[#172033] mt-0.5">{result.customer.name}</div>
-              <div className="font-mono text-[10px] text-[#64748B]">{result.customer.customer_id}</div>
+              <div className="text-[10px] uppercase text-[var(--text-secondary)] font-bold">Customer</div>
+              <div className="text-xs font-semibold text-[var(--text-primary)] mt-0.5">{result.customer.name}</div>
+              <div className="font-mono text-[10px] text-[var(--text-secondary)]">{result.customer.customer_id}</div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <div className="text-[10px] uppercase text-[#64748B] font-bold">Context Signals</div>
-            <div className="flex items-center gap-2 text-xs text-[#64748B]">
-              <MapPin className="h-3.5 w-3.5 text-[#3157D5]" />
-              <span className="text-[#172033] font-medium">{result.location}</span>
+            <div className="text-[10px] uppercase text-[var(--text-secondary)] font-bold">Context Signals</div>
+            <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+              <MapPin className="h-3.5 w-3.5 text-[var(--primary)]" />
+              <span className="text-[var(--text-primary)] font-medium">{result.location}</span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-[#64748B]">
+            <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
               <Smartphone className="h-3.5 w-3.5 text-[#D99425]" />
               <span className="text-[#172033] font-medium">{result.device_label}</span>
             </div>
@@ -278,6 +279,9 @@ const SimulationResultPanel: React.FC<{ result: SimulationResult; simRef: any }>
 
 // ─── MAIN COMMAND CENTER COMPONENT ────────────────────────────────────────────
 export const CommandCenter: React.FC = () => {
+  const { actualTheme } = useTheme();
+  const isDark = actualTheme === 'dark';
+
   const [stats, setStats] = useState({
     totalTx: 0,
     investigations: 0,
@@ -440,13 +444,13 @@ export const CommandCenter: React.FC = () => {
       {/* ─── DASHBOARD PANELS ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         
-        {/* Fraud Intelligence Network Visualization (Subtle 3D Depth & Floating Clusters) */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-[#DCE3EE] shadow-xs p-4.5 flex flex-col gap-3">
-          <div className="flex items-center justify-between border-b border-[#DCE3EE] pb-2.5">
-            <h2 className="text-xs font-bold text-[#172033] flex items-center gap-2 uppercase tracking-wider">
-              <Network className="h-4 w-4 text-[#3157D5]" /> Fraud Intelligence Network
+        {/* Fraud Intelligence Network Visualization (Theme-Aware 3D Depth & Floating Clusters) */}
+        <div className="lg:col-span-2 bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs p-4.5 flex flex-col gap-3 transition-colors duration-200">
+          <div className="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
+            <h2 className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2 uppercase tracking-wider">
+              <Network className="h-4 w-4 text-[var(--primary)]" /> Fraud Intelligence Network
             </h2>
-            <div className="flex items-center gap-3 text-[10px] font-semibold text-[#64748B]">
+            <div className="flex items-center gap-3 text-[10px] font-semibold text-[var(--text-secondary)]">
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#159A75]" /> Low</span>
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#D99425]" /> Step-Up</span>
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#D95C62]" /> High</span>
@@ -455,14 +459,16 @@ export const CommandCenter: React.FC = () => {
           </div>
           
           <div 
-            className="flex-1 bg-[#F7F9FC] border border-[#DCE3EE] rounded-xl p-5 relative min-h-[240px] overflow-hidden flex flex-wrap content-start gap-3"
+            className="flex-1 bg-[var(--background)] border border-[var(--border)] rounded-xl p-5 relative min-h-[240px] overflow-hidden flex flex-wrap content-start gap-3 transition-colors duration-200"
             style={{ perspective: '900px' }}
           >
-            {/* Soft grid background */}
+            {/* Theme-aware grid background */}
             <div 
               className="absolute inset-0 pointer-events-none opacity-40" 
               style={{ 
-                backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)', 
+                backgroundImage: isDark 
+                  ? 'radial-gradient(#22354D 1.5px, transparent 1.5px)' 
+                  : 'radial-gradient(#CBD5E1 1px, transparent 1px)', 
                 backgroundSize: '24px 24px' 
               }} 
             />
@@ -510,9 +516,9 @@ export const CommandCenter: React.FC = () => {
                   />
 
                   {/* Rich hover tooltip */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col bg-white border border-[#DCE3EE] shadow-elevated rounded-lg p-2 text-[10px] font-mono z-40 whitespace-nowrap min-w-[120px] pointer-events-none">
-                    <span className="text-[#64748B] font-semibold">{node.id}</span>
-                    <span className="text-xs font-bold text-[#172033]">₹{node.amount.toLocaleString()}</span>
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col bg-[var(--surface)] border border-[var(--border)] shadow-elevated rounded-lg p-2 text-[10px] font-mono z-40 whitespace-nowrap min-w-[120px] pointer-events-none">
+                    <span className="text-[var(--text-secondary)] font-semibold">{node.id}</span>
+                    <span className="text-xs font-bold text-[var(--text-primary)]">₹{node.amount.toLocaleString()}</span>
                     <span className={`font-semibold mt-0.5 ${isCritical ? 'text-[#D95C62]' : isMedium ? 'text-[#D99425]' : 'text-[#159A75]'}`}>
                       Status: {node.risk}
                     </span>
@@ -522,8 +528,8 @@ export const CommandCenter: React.FC = () => {
             })}
 
             {networkNodes.length === 0 && (
-              <div className="m-auto text-xs text-[#64748B] flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#3157D5] animate-ping" />
+              <div className="m-auto text-xs text-[var(--text-secondary)] flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-[var(--primary)] animate-ping" />
                 <span>Synchronizing live transaction intelligence stream...</span>
               </div>
             )}
@@ -531,18 +537,18 @@ export const CommandCenter: React.FC = () => {
         </div>
 
         {/* Recent Cases Queue */}
-        <div className="bg-white rounded-xl border border-[#DCE3EE] shadow-xs flex flex-col overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#DCE3EE] bg-[#F8FAFD] flex items-center justify-between">
-            <h2 className="text-xs font-bold text-[#172033] flex items-center gap-2 uppercase tracking-wider">
-              <FolderKanban className="h-4 w-4 text-[#6C63D9]" /> Active Investigation Cases
+        <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs flex flex-col overflow-hidden transition-colors duration-200">
+          <div className="px-4 py-3 border-b border-[var(--border)] bg-[var(--surface-muted)] flex items-center justify-between">
+            <h2 className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2 uppercase tracking-wider">
+              <FolderKanban className="h-4 w-4 text-[var(--secondary)]" /> Active Investigation Cases
             </h2>
-            <a href="#cases" className="text-xs text-[#3157D5] hover:underline font-semibold">View All</a>
+            <a href="#cases" className="text-xs text-[var(--primary)] hover:underline font-semibold">View All</a>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2 max-h-[260px]">
             {recentCases.map(c => (
-              <a href="#cases" key={c.id} className="block p-2.5 rounded-lg border border-[#DCE3EE] bg-white hover:border-[#3157D5] hover:shadow-xs transition-all">
+              <a href="#cases" key={c.id} className="block p-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)] hover:shadow-xs transition-all">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="font-mono text-xs font-bold text-[#172033]">
+                  <span className="font-mono text-xs font-bold text-[var(--text-primary)]">
                     {c.caseNumber}
                   </span>
                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${
@@ -551,14 +557,14 @@ export const CommandCenter: React.FC = () => {
                     {c.riskLevel}
                   </span>
                 </div>
-                <div className="text-[11px] text-[#64748B] flex items-center gap-1.5 truncate">
-                  <FileText className="h-3 w-3 text-[#64748B] shrink-0" />
+                <div className="text-[11px] text-[var(--text-secondary)] flex items-center gap-1.5 truncate">
+                  <FileText className="h-3 w-3 text-[var(--text-secondary)] shrink-0" />
                   <span className="truncate font-medium">{c.recommendation.replace(/_/g, ' ')}</span>
                 </div>
               </a>
             ))}
             {recentCases.length === 0 && (
-              <div className="p-6 text-center text-xs text-[#64748B]">
+              <div className="p-6 text-center text-xs text-[var(--text-secondary)]">
                 No open investigation cases.
               </div>
             )}

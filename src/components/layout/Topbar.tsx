@@ -49,15 +49,16 @@ export const Topbar: React.FC = () => {
           <div className="flex items-center rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-0.5">
             {(
               [
-                { id: 'light', icon: Sun, title: 'Light mode' },
-                { id: 'dark', icon: Moon, title: 'Dark mode' },
-                { id: 'system', icon: Laptop, title: 'System preference' },
+                { id: 'light', icon: Sun, title: 'Light' },
+                { id: 'dark', icon: Moon, title: 'Dark' },
+                { id: 'system', icon: Laptop, title: 'System' },
               ] as const
             ).map(({ id, icon: Icon, title }) => (
               <button
                 key={id}
                 onClick={() => setTheme(id as Theme)}
                 title={title}
+                aria-label={title}
                 className={`p-1.5 rounded text-xs transition-colors cursor-pointer ${
                   theme === id
                     ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-xs'

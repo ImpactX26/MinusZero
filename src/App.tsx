@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './context/ThemeContext';
 import { AppShell } from './components/layout/AppShell';
-import { LoginPage } from './pages/LoginPage';
+import { LandingPage } from './pages/LandingPage';
 import { Shield, Loader2 } from 'lucide-react';
 
 const AppContent: React.FC = () => {
@@ -31,8 +31,8 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Gate: Unauthenticated users are shown LoginPage, authenticated users enter AppShell
-  return !user ? <LoginPage /> : <AppShell />;
+  // Gate: Unauthenticated users are shown LandingPage, authenticated users enter AppShell
+  return !user ? <LandingPage /> : <AppShell />;
 };
 
 export const App: React.FC = () => {

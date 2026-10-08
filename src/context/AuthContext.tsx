@@ -3,6 +3,8 @@ import {
   onAuthStateChanged,
   signInAnonymously as fbSignInAnonymously,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
   signOut as fbSignOut,
   User,
 } from 'firebase/auth';
@@ -15,6 +17,7 @@ interface AuthContextType {
   error: string | null;
   signInAnonymously: () => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
+  signUpWithEmail: (email: string, pass: string, name?: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
 }
@@ -82,6 +85,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signUpWithEmail = async (email: string, pass: string, name?: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await createUserWithEmailAndPassword(auth, email, pass);
+      if (name && res.user) {
+        await updateProfile(res.user, { displayName: name });
+        setUser((prev) => (prev ? { ...prev, displayName: name } : null));
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to create investigator account';
+      setError(msg);
+      setLoading(false);
+      throw err;
+    }
+  };
+
   const signOut = async () => {
     try {
       setLoading(true);
@@ -105,6 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error,
         signInAnonymously,
         signInWithEmail,
+        signUpWithEmail,
         signOut,
         clearError,
       }}
