@@ -18,7 +18,8 @@ export type NavigationTab =
   | 'customers'
   | 'entity-graph'
   | 'analytics'
-  | 'settings';
+  | 'settings'
+  | 'investigation-workspace';
 
 interface NavigationProps {
   activeTab: NavigationTab;

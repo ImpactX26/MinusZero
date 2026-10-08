@@ -12,6 +12,7 @@ import { Customers } from '../../pages/Customers';
 import { EntityGraph } from '../../pages/EntityGraph';
 import { Analytics } from '../../pages/Analytics';
 import { Settings } from '../../pages/Settings';
+import { InvestigationWorkspace } from '../../pages/InvestigationWorkspace';
 
 export const AppShell: React.FC = () => {
   // Sync tab with URL hash if available
@@ -26,6 +27,7 @@ export const AppShell: React.FC = () => {
       'entity-graph',
       'analytics',
       'settings',
+      'investigation-workspace'
     ];
     return validTabs.includes(hash) ? hash : 'command-center';
   });
@@ -42,6 +44,7 @@ export const AppShell: React.FC = () => {
         'entity-graph',
         'analytics',
         'settings',
+        'investigation-workspace'
       ];
       if (validTabs.includes(hash)) {
         setActiveTab(hash);
@@ -75,6 +78,8 @@ export const AppShell: React.FC = () => {
         return <Analytics />;
       case 'settings':
         return <Settings />;
+      case 'investigation-workspace':
+        return <InvestigationWorkspace />;
       default:
         return <CommandCenter />;
     }

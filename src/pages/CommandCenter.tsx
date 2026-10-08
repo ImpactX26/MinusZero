@@ -472,6 +472,17 @@ const SimulationResultPanel: React.FC<{ result: SimulationResult }> = ({ result 
             )}
           </div>
         </div>
+
+        {/* Action Button to Workspace */}
+        <div className="pt-4 mt-2 border-t border-[var(--border-subtle)] flex justify-end">
+          <a
+            href="#investigation-workspace"
+            className="btn-primary px-6 py-2 flex items-center gap-2"
+          >
+            <span>Open Investigation Workspace</span>
+            <ChevronRight className="h-4 w-4" />
+          </a>
+        </div>
       </div>
     )}
   </div>
