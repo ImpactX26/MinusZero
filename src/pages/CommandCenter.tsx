@@ -280,31 +280,68 @@ export const CommandCenter: React.FC = () => {
       }
       const bankName = BANK_BRANDING[bankId]?.name || 'Bank Alpha';
 
-      // Evaluate real risk using the centralized risk engine
+      // Evaluate real risk using persisted evaluation or centralized risk engine
       let riskResult: RiskAssessmentResult;
-      try {
-        riskResult = evaluateTransactionContext(tx);
-      } catch {
-        // Fallback evaluation for custom dynamic phone transactions
-        const fallbackCustomer: Customer = customer || {
-          customer_id: tx.customer_id,
-          name: customerName,
-          home_city: tx.city || 'Bengaluru',
-          normal_amount_min: 100,
-          normal_amount_max: 20000,
-          usual_cities: [tx.city || 'Bengaluru'],
-          usual_device_ids: [tx.device_id],
-          risk_profile: tx.customer_id === 'C1003' ? 'HIGH' : 'LOW',
+      if (tx.risk_score !== undefined && tx.decision) {
+        riskResult = {
+          riskScore: tx.risk_score,
+          riskLevel:
+            tx.risk_level ||
+            (tx.risk_score <= 30
+              ? 'LOW'
+              : tx.risk_score <= 70
+              ? 'MEDIUM'
+              : tx.risk_score <= 90
+              ? 'HIGH'
+              : 'CRITICAL'),
+          decision: tx.decision,
+          reasonCodes: (tx.risk_reasons || []).map((r) => ({
+            code: r,
+            title: r,
+            points: 10,
+            direction: 'RISK',
+          })),
+          triggeredSignals: (tx.risk_reasons || []).map((r) => ({
+            signal: 'highAmountDeviation',
+            code: r,
+            domain: 'TRANSACTION',
+            title: r,
+            weight: 20,
+            triggered: true,
+            reason: r,
+            pointsContribution: 20,
+          })),
+          scoreBreakdown: [],
+          summary:
+            tx.blocked_reason ||
+            `Evaluated risk score ${tx.risk_score}/100 with decision ${tx.decision}.`,
+          evaluatedAt: tx.timestamp,
         };
-        const input: RiskEvaluationInput = {
-          transaction: tx,
-          customer: fallbackCustomer,
-          networkSignal:
-            tx.customer_id === 'C1003'
-              ? SYNTHETIC_NETWORK_SIGNALS[1]
-              : SYNTHETIC_NETWORK_SIGNALS[0],
-        };
-        riskResult = evaluateTransactionRisk(input);
+      } else {
+        try {
+          riskResult = evaluateTransactionContext(tx);
+        } catch {
+          // Fallback evaluation for custom dynamic phone transactions
+          const fallbackCustomer: Customer = customer || {
+            customer_id: tx.customer_id,
+            name: customerName,
+            home_city: tx.city || 'Bengaluru',
+            normal_amount_min: 100,
+            normal_amount_max: 20000,
+            usual_cities: [tx.city || 'Bengaluru'],
+            usual_device_ids: [tx.device_id],
+            risk_profile: tx.customer_id === 'C1003' ? 'HIGH' : 'LOW',
+          };
+          const input: RiskEvaluationInput = {
+            transaction: tx,
+            customer: fallbackCustomer,
+            networkSignal:
+              tx.customer_id === 'C1003'
+                ? SYNTHETIC_NETWORK_SIGNALS[1]
+                : SYNTHETIC_NETWORK_SIGNALS[0],
+          };
+          riskResult = evaluateTransactionRisk(input);
+        }
       }
 
       // Format triggers

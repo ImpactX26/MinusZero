@@ -156,6 +156,11 @@ export interface Transaction {
   approval_method?: 'BIOMETRIC' | 'PASSWORD' | 'PIN';
   approved_at?: string;
   blocked_reason?: string;
+  // Risk Evaluation Metadata
+  risk_score?: number;
+  risk_level?: RiskLevel;
+  decision?: DecisionAction;
+  risk_reasons?: string[];
 }
 
 // ==========================================

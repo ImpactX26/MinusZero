@@ -58,13 +58,20 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Phase 2.6 Patch: Notifications collection with strict customer isolation & ownership enforcement
+    // Phase 2.6 Patch & Phase 5 Security Hardening: Notifications collection with strict customer isolation & ownership enforcement
     match /notifications/{notificationId} {
-      // Authenticated users only. Must supply required audit fields
+      // Authenticated users only. Must supply required audit fields and prove caller ownership
       allow create: if request.auth != null
         && request.resource.data.customer_id != null
         && request.resource.data.account_id != null
-        && request.resource.data.device_id != null;
+        && request.resource.data.device_id != null
+        && (
+          (request.resource.data.auth_uid != null && request.resource.data.auth_uid == request.auth.uid)
+          || (exists(/databases/$(database)/documents/devices/$(request.auth.uid))
+              && get(/databases/$(database)/documents/devices/$(request.auth.uid)).data.customer_id == request.resource.data.customer_id)
+          || (exists(/databases/$(database)/documents/devices/$(request.resource.data.device_id))
+              && get(/databases/$(database)/documents/devices/$(request.resource.data.device_id)).data.firebaseUid == request.auth.uid)
+        );
 
       // Ownership enforcement:
       // Read permitted only if caller is authenticated and notification belongs to caller's registered device/customer session or auth UID
@@ -78,7 +85,7 @@ service cloud.firestore {
               && get(/databases/$(database)/documents/devices/$(resource.data.device_id)).data.firebaseUid == request.auth.uid)
         );
 
-      // Update permitted only on own notifications; customer_id and account_id are immutable
+      // Update permitted only on own notifications; customer_id, account_id, device_id, and auth_uid are strictly immutable
       allow update: if request.auth != null
         && (
           (exists(/databases/$(database)/documents/devices/$(request.auth.uid))
@@ -89,7 +96,9 @@ service cloud.firestore {
               && get(/databases/$(database)/documents/devices/$(resource.data.device_id)).data.firebaseUid == request.auth.uid)
         )
         && request.resource.data.customer_id == resource.data.customer_id
-        && request.resource.data.account_id == resource.data.account_id;
+        && request.resource.data.account_id == resource.data.account_id
+        && request.resource.data.device_id == resource.data.device_id
+        && (!('auth_uid' in resource.data) || request.resource.data.auth_uid == resource.data.auth_uid);
 
       // Deletion strictly prohibited
       allow delete: if false;

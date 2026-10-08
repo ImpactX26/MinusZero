@@ -16,13 +16,23 @@ import {
   PhoneNotification,
   NotificationEventType,
   AppLanguage,
+  Customer,
+  Case,
 } from '../types';
 import {
   transactionsCol,
   accountsCol,
   auditLogsCol,
   notificationsCol,
+  casesCol,
 } from '../firebase/collections';
+import { evaluateTransactionContext } from '../risk/riskService';
+import {
+  evaluateTransactionRisk,
+  RiskEvaluationInput,
+  RiskAssessmentResult,
+} from '../risk/riskEngine';
+import { SYNTHETIC_NETWORK_SIGNALS } from '../data/scenarios';
 import { TRANSLATIONS } from '../data/translations';
 import { doc, setDoc, updateDoc, onSnapshot, query, where, getDoc, getDocs } from 'firebase/firestore';
 import {
@@ -542,7 +552,7 @@ export const DeviceFoundationView: React.FC = () => {
   const recordAuditLog = useCallback(
     async (
       action: string,
-      objectType: 'ACCOUNT' | 'TRANSACTION',
+      objectType: 'ACCOUNT' | 'TRANSACTION' | 'CASE',
       objectId: string,
       details: Record<string, unknown>
     ) => {
@@ -741,6 +751,47 @@ export const DeviceFoundationView: React.FC = () => {
 
     try {
       // ════════════════════════════════════════════════════════════════════════
+      // EVALUATE FRAUD RISK WITH CANONICAL RISK ENGINE
+      // ════════════════════════════════════════════════════════════════════════
+      let riskResult: RiskAssessmentResult;
+      try {
+        riskResult = evaluateTransactionContext(baseTxn);
+      } catch {
+        const fallbackCustomer: Customer = activeIdentity.customer || {
+          customer_id: activeIdentity.customerId,
+          name: activeIdentity.name,
+          home_city: customCity || activeIdentity.defaultCity,
+          normal_amount_min: 100,
+          normal_amount_max: 20000,
+          usual_cities: [customCity || activeIdentity.defaultCity],
+          usual_device_ids: [deviceId || 'DEV-MOBILE-UNSET'],
+          risk_profile: activeIdentity.role === 'ATTACKER' ? 'HIGH' : 'LOW',
+        };
+        const input: RiskEvaluationInput = {
+          transaction: baseTxn,
+          customer: fallbackCustomer,
+          device: {
+            device_id: deviceId || 'DEV-MOBILE-UNSET',
+            customer_id: activeIdentity.customerId,
+            first_seen: nowIso,
+            last_seen: nowIso,
+            known: activeIdentity.customer?.usual_device_ids?.includes(deviceId || '') ?? (activeIdentity.role !== 'ATTACKER'),
+            device_type: 'mobile',
+          },
+          networkSignal:
+            activeIdentity.role === 'ATTACKER'
+              ? SYNTHETIC_NETWORK_SIGNALS[1]
+              : SYNTHETIC_NETWORK_SIGNALS[0],
+        };
+        riskResult = evaluateTransactionRisk(input);
+      }
+
+      const riskReasons =
+        riskResult.reasonCodes && riskResult.reasonCodes.length > 0
+          ? riskResult.reasonCodes.map((r) => r.title)
+          : riskResult.triggeredSignals.map((s) => s.title);
+
+      // ════════════════════════════════════════════════════════════════════════
       // RULE 1: HARD MAXIMUM TRANSACTION LIMIT CHECK
       // If amount > fixed limit → transaction MUST be BLOCKED.
       // Verification cannot override this.
@@ -752,6 +803,10 @@ export const DeviceFoundationView: React.FC = () => {
           status: 'BLOCKED',
           blocked_reason: blockedReason,
           approval_status: 'NONE',
+          risk_score: riskResult.riskScore,
+          risk_level: riskResult.riskLevel,
+          decision: riskResult.decision,
+          risk_reasons: riskReasons,
         };
 
         await setDoc(txnRef, blockedTxn, { merge: true });
@@ -760,6 +815,8 @@ export const DeviceFoundationView: React.FC = () => {
           reason: 'EXCEEDS_MAX_LIMIT',
           amount: parsedAmount,
           maxLimit: snapMax,
+          riskScore: riskResult.riskScore,
+          decision: riskResult.decision,
           merchant: selectedMerchant.name,
         });
 
@@ -786,14 +843,96 @@ export const DeviceFoundationView: React.FC = () => {
       }
 
       // ════════════════════════════════════════════════════════════════════════
-      // RULE 2: CAUTION / APPROVAL THRESHOLD CHECK
-      // If amount > caution threshold AND amount <= fixed limit → APPROVAL_REQUIRED
+      // RULE 2: FRAUD RISK POLICY ENFORCEMENT
+      // If Risk Engine returns a BLOCK decision (BLOCK_AND_REVIEW or BLOCK_AND_CREATE_CASE)
+      // Transaction MUST be BLOCKED. Verification cannot override this.
       // ════════════════════════════════════════════════════════════════════════
-      if (parsedAmount > snapCaution) {
+      if (riskResult.decision.includes('BLOCK')) {
+        const blockedReason = `Fraud Prevention Block (${riskResult.riskLevel} Risk, Score ${riskResult.riskScore}/100): ${riskResult.summary}`;
+        const blockedTxn: Transaction = {
+          ...baseTxn,
+          status: 'BLOCKED',
+          blocked_reason: blockedReason,
+          approval_status: 'NONE',
+          risk_score: riskResult.riskScore,
+          risk_level: riskResult.riskLevel,
+          decision: riskResult.decision,
+          risk_reasons: riskReasons,
+        };
+
+        await setDoc(txnRef, blockedTxn, { merge: true });
+
+        await recordAuditLog('PAYMENT_BLOCKED', 'TRANSACTION', uniqueTxnId, {
+          reason: 'FRAUD_RISK_BLOCK',
+          amount: parsedAmount,
+          riskScore: riskResult.riskScore,
+          riskLevel: riskResult.riskLevel,
+          decision: riskResult.decision,
+          merchant: selectedMerchant.name,
+        });
+
+        // Dispatch PAYMENT_BLOCKED notification
+        await createNotification('PAYMENT_BLOCKED', {
+          transactionId: uniqueTxnId,
+          amount: parsedAmount,
+          merchant: selectedMerchant.name,
+          maxLimit: snapMax,
+          actionRequired: false,
+        });
+
+        // Automated Case Creation if policy requires case (BLOCK or score >= 70)
+        const caseId = `CASE-AUTO-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        const caseCreated: Case = {
+          id: caseId,
+          caseNumber: `CASE-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+          transactionId: uniqueTxnId,
+          customerId: activeIdentity.customerId,
+          status: 'INVESTIGATING',
+          riskScore: riskResult.riskScore,
+          riskLevel: riskResult.riskLevel,
+          confidence: 0.95,
+          verdict: riskResult.summary,
+          recommendation: riskResult.decision,
+          reasonCodes: riskResult.reasonCodes,
+          investigationSummary: riskResult.summary,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        };
+        await setDoc(doc(casesCol(), caseId), caseCreated);
+
+        await recordAuditLog('CASE_CREATED', 'CASE', caseId, {
+          transactionId: uniqueTxnId,
+          customerId: activeIdentity.customerId,
+          riskScore: riskResult.riskScore,
+          decision: riskResult.decision,
+        });
+
+        setLastSubmittedTxn({
+          id: uniqueTxnId,
+          amount: parsedAmount,
+          merchant: selectedMerchant.name,
+          timestamp: nowIso,
+          status: 'BLOCKED',
+          blockedReason,
+        });
+
+        setIsSubmitting(false);
+        return;
+      }
+
+      // ════════════════════════════════════════════════════════════════════════
+      // RULE 3: CAUTION / APPROVAL THRESHOLD & STEP-UP VERIFICATION CHECK
+      // If amount > caution threshold OR risk decision requires STEP_UP_VERIFICATION → APPROVAL_REQUIRED
+      // ════════════════════════════════════════════════════════════════════════
+      if (parsedAmount > snapCaution || riskResult.decision === 'STEP_UP_VERIFICATION') {
         const approvalTxn: Transaction = {
           ...baseTxn,
           status: 'APPROVAL_REQUIRED',
           approval_status: 'PENDING',
+          risk_score: riskResult.riskScore,
+          risk_level: riskResult.riskLevel,
+          decision: riskResult.decision,
+          risk_reasons: riskReasons,
         };
 
         await setDoc(txnRef, approvalTxn, { merge: true });
@@ -802,6 +941,8 @@ export const DeviceFoundationView: React.FC = () => {
           amount: parsedAmount,
           cautionThreshold: snapCaution,
           maxLimit: snapMax,
+          riskScore: riskResult.riskScore,
+          decision: riskResult.decision,
           merchant: selectedMerchant.name,
         });
 
@@ -831,12 +972,16 @@ export const DeviceFoundationView: React.FC = () => {
       }
 
       // ════════════════════════════════════════════════════════════════════════
-      // RULE 3: NORMAL TRANSACTION (Within Caution Limit) → COMPLETED
+      // RULE 4: NORMAL TRANSACTION (Within Caution Limit & ALLOW Decision) → COMPLETED
       // ════════════════════════════════════════════════════════════════════════
       const completedTxn: Transaction = {
         ...baseTxn,
         status: 'COMPLETED',
         approval_status: 'NONE',
+        risk_score: riskResult.riskScore,
+        risk_level: riskResult.riskLevel,
+        decision: riskResult.decision,
+        risk_reasons: riskReasons,
       };
 
       await setDoc(txnRef, completedTxn, { merge: true });
@@ -881,6 +1026,16 @@ export const DeviceFoundationView: React.FC = () => {
   // Complete Approval (Transitions: APPROVAL_REQUIRED → APPROVED → COMPLETED)
   const handleApprovePayment = async (method: 'BIOMETRIC' | 'PIN') => {
     if (!pendingApproval || isProcessingApproval) return;
+
+    // Defense-in-depth: Never allow approved completion of a fraud-blocked transaction
+    if (
+      pendingApproval.txnData.status === 'BLOCKED' ||
+      pendingApproval.txnData.decision?.includes('BLOCK')
+    ) {
+      setErrorMessage('Security Alert: This transaction was blocked by fraud risk policy and cannot be approved.');
+      setPendingApproval(null);
+      return;
+    }
 
     setIsProcessingApproval(true);
     const txnRef = doc(transactionsCol(), pendingApproval.txnId);
