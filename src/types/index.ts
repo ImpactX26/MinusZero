@@ -370,6 +370,9 @@ export interface Case {
   humanActionTaken?: string;
   humanDisposition?: 'CONFIRMED_FRAUD' | 'MARKED_LEGITIMATE' | 'INCONCLUSIVE';
   assignedTo?: string;
+  reasonCodes?: ReasonCode[];
+  investigationSummary?: string;
+  agentFindings?: any[];
   createdAt: string;
   updatedAt: string;
   closedAt?: string;

@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { CANONICAL_SCENARIOS, SYNTHETIC_NETWORK_SIGNALS } from '../data/scenarios';
 import { evaluateTransactionRisk, RiskEvaluationInput } from '../risk/riskEngine';
+import { casesCol, auditLogsCol } from '../firebase/collections';
+import { setDoc, addDoc, doc } from 'firebase/firestore';
 import {
   runTransactionAgent,
   runBehaviourAgent,
@@ -27,7 +29,7 @@ import {
   runVerifier,
   runNarrator
 } from '../investigation/agents';
-import { AgentResult } from '../types';
+import { AgentResult, Case, AuditLog, DecisionAction } from '../types';
 
 export const InvestigationWorkspace: React.FC = () => {
   const scenario = CANONICAL_SCENARIOS['high_risk_c1003'];
@@ -95,9 +97,55 @@ export const InvestigationWorkspace: React.FC = () => {
     }
   };
 
-  const confirmAction = () => {
-    alert(`Confirmed high-impact action: ${showConfirm}`);
-    setShowConfirm(null);
+  const confirmAction = async () => {
+    try {
+      const caseId = `CASE-${scenario.customer_id}-${Date.now().toString().slice(-6)}`;
+      let recommendation: DecisionAction = 'BLOCK_AND_REVIEW';
+      if (showConfirm === 'Hold') recommendation = 'STEP_UP_VERIFICATION';
+      if (showConfirm === 'Block & Review') recommendation = 'BLOCK_AND_REVIEW';
+      if (showConfirm === 'Freeze Account') recommendation = 'BLOCK_AND_CREATE_CASE';
+
+      const newCase: Case = {
+        id: caseId,
+        caseNumber: caseId,
+        transactionId: input.transaction.transaction_id || '',
+        customerId: input.customer.customer_id,
+        status: 'NEW',
+        riskScore: riskResult.riskScore,
+        riskLevel: riskResult.riskLevel,
+        confidence: 0.95,
+        verdict: narrator.summary,
+        recommendation,
+        reasonCodes: riskResult.reasonCodes,
+        investigationSummary: narrator.summary,
+        agentFindings: agentResults.map(a => ({
+          agent: a.agent_name,
+          summary: a.summary,
+          evidenceItems: a.evidenceItems || []
+        })),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      await setDoc(doc(casesCol(), caseId), newCase);
+      
+      const auditLog: Omit<AuditLog, 'id'> = {
+        actor: 'INVESTIGATOR',
+        action: 'CASE_CREATED',
+        objectType: 'CASE',
+        objectId: caseId,
+        details: { action: showConfirm },
+        createdAt: new Date().toISOString()
+      };
+      await addDoc(auditLogsCol(), auditLog);
+      
+      setShowConfirm(null);
+      window.location.hash = 'cases';
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save case.');
+      setShowConfirm(null);
+    }
   };
 
   return (
