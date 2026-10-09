@@ -416,6 +416,9 @@ Human Review
 ```
 
 > **Don't just detect fraud. Investigate it. Understand it. Explain it. Respond to it.**
+>## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
