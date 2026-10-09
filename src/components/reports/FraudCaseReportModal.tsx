@@ -8,12 +8,15 @@ import {
   Customer,
   Device,
   NetworkSignal,
+  CaseNote,
 } from '../../types';
 import {
   investigationsCol,
   agentLogsCol,
   auditLogsCol,
   transactionsCol,
+  casesCol,
+  caseNotesCol,
 } from '../../firebase/collections';
 import { doc, getDoc, getDocs, query, where, orderBy } from 'firebase/firestore';
 import {
@@ -38,6 +41,10 @@ import {
   Check,
   Sparkles,
   Info,
+  UserCheck,
+  ShieldCheck,
+  Scale,
+  MessageSquare,
 } from 'lucide-react';
 
 interface FraudCaseReportModalProps {
@@ -56,9 +63,11 @@ export const FraudCaseReportModal: React.FC<FraudCaseReportModalProps> = ({
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeTx, setActiveTx] = useState<Transaction | null>(initialTx || null);
+  const [resolvedCase, setResolvedCase] = useState<Case | null>(caseData || null);
   const [investigation, setInvestigation] = useState<Investigation | null>(null);
   const [agentLogs, setAgentLogs] = useState<AgentLog[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditLog[]>([]);
+  const [caseNotes, setCaseNotes] = useState<CaseNote[]>([]);
 
   // 1. Fetch relevant Firestore records whenever case or transaction changes
   useEffect(() => {
@@ -69,7 +78,7 @@ export const FraudCaseReportModal: React.FC<FraudCaseReportModalProps> = ({
       setLoading(true);
       try {
         const txId = caseData?.transactionId || initialTx?.transaction_id;
-        const caseId = caseData?.id;
+        let activeCaseId = caseData?.id;
 
         // Fetch Transaction if not provided
         if (!initialTx && txId) {
@@ -85,10 +94,27 @@ export const FraudCaseReportModal: React.FC<FraudCaseReportModalProps> = ({
           setActiveTx(initialTx);
         }
 
-        // Fetch Investigation document from /investigations
-        if (caseId || txId) {
+        // Fetch Case if not provided but txId is known
+        if (!caseData && txId) {
           try {
-            let invQuery = query(investigationsCol(), where('case_id', '==', caseId || ''));
+            const caseQuery = query(casesCol(), where('transactionId', '==', txId));
+            const caseSnap = await getDocs(caseQuery);
+            if (!caseSnap.empty && isMounted) {
+              const loadedCase = { ...caseSnap.docs[0].data(), id: caseSnap.docs[0].id } as Case;
+              setResolvedCase(loadedCase);
+              activeCaseId = loadedCase.id;
+            }
+          } catch (err) {
+            console.warn('[FraudReport] Case fetch warning:', err);
+          }
+        } else if (caseData) {
+          setResolvedCase(caseData);
+        }
+
+        // Fetch Investigation document from /investigations
+        if (activeCaseId || txId) {
+          try {
+            let invQuery = query(investigationsCol(), where('case_id', '==', activeCaseId || ''));
             let invSnap = await getDocs(invQuery);
             if (invSnap.empty && txId) {
               invQuery = query(investigationsCol(), where('transaction_id', '==', txId));
@@ -105,9 +131,9 @@ export const FraudCaseReportModal: React.FC<FraudCaseReportModalProps> = ({
         }
 
         // Fetch Agent Logs from /agent_logs
-        if (caseId) {
+        if (activeCaseId) {
           try {
-            const logsQuery = query(agentLogsCol(), where('case_id', '==', caseId));
+            const logsQuery = query(agentLogsCol(), where('case_id', '==', activeCaseId));
             const logsSnap = await getDocs(logsQuery);
             if (!logsSnap.empty && isMounted) {
               const logs = logsSnap.docs.map((d) => d.data() as AgentLog);
@@ -120,8 +146,24 @@ export const FraudCaseReportModal: React.FC<FraudCaseReportModalProps> = ({
           }
         }
 
+        // Fetch Case Notes from /case_notes
+        if (activeCaseId) {
+          try {
+            const notesQuery = query(caseNotesCol(), where('caseId', '==', activeCaseId), orderBy('createdAt', 'asc'));
+            const notesSnap = await getDocs(notesQuery);
+            if (!notesSnap.empty && isMounted) {
+              const notes = notesSnap.docs.map((d) => ({ ...d.data(), noteId: d.id } as CaseNote));
+              setCaseNotes(notes);
+            } else if (isMounted) {
+              setCaseNotes([]);
+            }
+          } catch (err) {
+            console.warn('[FraudReport] Case notes fetch warning:', err);
+          }
+        }
+
         // Fetch Audit Logs from /audit_logs
-        if (caseId || txId) {
+        if (activeCaseId || txId) {
           try {
             const auditSnap = await getDocs(query(auditLogsCol(), orderBy('createdAt', 'asc')));
             if (!auditSnap.empty && isMounted) {
@@ -129,10 +171,10 @@ export const FraudCaseReportModal: React.FC<FraudCaseReportModalProps> = ({
                 .map((d) => ({ ...d.data(), id: d.id } as AuditLog))
                 .filter(
                   (a) =>
-                    a.objectId === caseId ||
+                    a.objectId === activeCaseId ||
                     a.objectId === txId ||
                     a.details?.transactionId === txId ||
-                    a.details?.caseId === caseId
+                    a.details?.caseId === activeCaseId
                 );
               setAuditEvents(events);
             }
@@ -347,7 +389,7 @@ export const FraudCaseReportModal: React.FC<FraudCaseReportModalProps> = ({
           </div>
 
           {/* ─── SECTION 2: CASE METRICS & RISK STATUS STRIP ──────────────────────── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {/* Risk Score */}
             <div className="p-3.5 rounded-xl border border-[var(--border)] bg-[var(--bg-root)]">
               <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
@@ -406,7 +448,33 @@ export const FraudCaseReportModal: React.FC<FraudCaseReportModalProps> = ({
                   {persistedStatus}
                 </span>
               </div>
-              <div className="text-[10px] text-[var(--text-muted)] mt-0.5">Firestore /transactions</div>
+              <div className="text-[10px] text-[var(--text-muted)] mt-0.5">Immutable Payment Record</div>
+            </div>
+
+            {/* SOC Case Status & Assignee */}
+            <div className="p-3.5 rounded-xl border border-blue-500/30 bg-blue-500/5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500">
+                SOC Case Stage
+              </div>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span
+                  className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
+                    resolvedCase?.status === 'RESOLVED'
+                      ? 'bg-rose-500/15 text-rose-500 border border-rose-500/30'
+                      : resolvedCase?.status === 'FALSE_POSITIVE'
+                      ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
+                      : resolvedCase?.status === 'ESCALATED'
+                      ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
+                      : 'bg-blue-500/15 text-blue-500 border border-blue-500/30'
+                  }`}
+                >
+                  {resolvedCase?.status || 'OPEN'}
+                </span>
+              </div>
+              <div className="text-[10px] text-[var(--text-muted)] mt-0.5 truncate flex items-center gap-1">
+                <UserCheck className="h-3 w-3 inline text-blue-500 shrink-0" />
+                <span className="truncate">{resolvedCase?.assignedTo || 'Unassigned'}</span>
+              </div>
             </div>
 
             {/* Transaction Amount */}
@@ -421,6 +489,142 @@ export const FraudCaseReportModal: React.FC<FraudCaseReportModalProps> = ({
                 {activeTx?.merchant || 'Luxury Jewels'}
               </div>
             </div>
+          </div>
+
+          {/* ─── SECTION 2.5: SOC CASE LIFECYCLE & HUMAN ADJUDICATION ─────────────── */}
+          <div className="p-4 rounded-xl border border-blue-500/30 bg-blue-500/5 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
+              <div className="flex items-center gap-2">
+                <Scale className="h-4 w-4 text-blue-500" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                  Auditable SOC Case Management & Human Adjudication
+                </h4>
+              </div>
+              <span className="text-[10px] font-mono text-blue-500/80">
+                Phase 10 SOC Analyst Workflow
+              </span>
+            </div>
+
+            {/* Duality: Autonomous AI vs Human Determination */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              {/* Left: Original Autonomous Finding */}
+              <div className="p-3.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                      <Bot className="h-3.5 w-3.5 text-purple-500" />
+                      Original Autonomous AI Finding
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold border border-purple-500/20">
+                      11-Agent Risk Pipeline
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 text-[11px] text-[var(--text-secondary)]">
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)]">Autonomous Risk Score:</span>
+                      <span className="font-mono font-bold text-rose-500">{riskScore} / 100 ({riskLevel})</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)]">Policy Recommendation:</span>
+                      <span className="font-mono font-semibold text-[var(--text-primary)]">[{policyDecision}]</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)]">Financial Record Status:</span>
+                      <span className="font-mono font-bold text-rose-500">[{persistedStatus}]</span>
+                    </div>
+                    <p className="pt-2 text-[11px] text-[var(--text-muted)] leading-relaxed italic border-t border-[var(--border)] mt-2">
+                      {investigation?.summary?.verdict || 'Autonomous signals flagged anomalous velocity, untrusted handset fingerprint, and hosting proxy routing.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Human Analyst Final Determination */}
+              <div className="p-3.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5 text-blue-500" />
+                      Human SOC Analyst Determination
+                    </span>
+                    <span
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
+                        resolvedCase?.status === 'RESOLVED'
+                          ? 'bg-rose-500/15 text-rose-500 border-rose-500/30'
+                          : resolvedCase?.status === 'FALSE_POSITIVE'
+                          ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30'
+                          : resolvedCase?.status === 'ESCALATED'
+                          ? 'bg-amber-500/15 text-amber-500 border-amber-500/30'
+                          : 'bg-blue-500/15 text-blue-500 border-blue-500/30'
+                      }`}
+                    >
+                      {resolvedCase?.status === 'RESOLVED'
+                        ? 'CONFIRMED FRAUD'
+                        : resolvedCase?.status === 'FALSE_POSITIVE'
+                        ? 'MARKED FALSE POSITIVE'
+                        : resolvedCase?.status || 'PENDING REVIEW'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 text-[11px] text-[var(--text-secondary)]">
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)]">Assigned Analyst:</span>
+                      <span className="font-semibold text-[var(--text-primary)]">{resolvedCase?.assignedTo || 'Unassigned'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)]">Resolution Reason:</span>
+                      <span className="font-mono font-medium text-[var(--text-primary)]">
+                        {resolvedCase?.resolutionReason ? resolvedCase.resolutionReason.replace(/_/g, ' ') : 'Pending Final Adjudication'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)]">Adjudicated By:</span>
+                      <span className="font-mono text-[var(--text-secondary)]">
+                        {resolvedCase?.resolvedBy || (resolvedCase?.assignedTo ? `In Review by ${resolvedCase.assignedTo}` : 'Unassigned')}
+                      </span>
+                    </div>
+
+                    {resolvedCase?.resolutionNotes && (
+                      <div className="pt-2 border-t border-[var(--border)] mt-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Analyst Rationale:</span>
+                        <p className="text-[11px] text-[var(--text-primary)] mt-0.5 leading-relaxed bg-[var(--bg-root)] p-2 rounded border border-[var(--border)]">
+                          {resolvedCase.resolutionNotes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Immutable Ledger Preservation Banner */}
+            <div className="p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-300">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
+              <div>
+                <span className="font-bold">Immutable Ledger Invariant:</span> Human case resolution documents the regulatory SOC finding without altering the operational payment status. The payment ledger entry remains firmly <strong className="font-mono">[{persistedStatus}]</strong> with Risk Score <strong className="font-mono">{riskScore}/100</strong>.
+              </div>
+            </div>
+
+            {/* Analyst Notes Log (if notes exist) */}
+            {caseNotes.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-blue-500/20">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
+                  <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
+                  <span>Analyst Case Notes & Investigation Observations ({caseNotes.length})</span>
+                </div>
+                <div className="space-y-1.5 max-h-[140px] overflow-y-auto custom-scrollbar">
+                  {caseNotes.map((note, nIdx) => (
+                    <div key={nIdx} className="p-2 rounded bg-[var(--bg-surface)] border border-[var(--border)] text-xs">
+                      <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] mb-1">
+                        <span className="font-bold text-[var(--text-primary)]">{note.author}</span>
+                        <span className="font-mono">{new Date(note.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="text-[11px] text-[var(--text-secondary)]">{note.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ─── SECTION 3: TRANSACTION & ENTITY DOSSIER ─────────────────────────── */}

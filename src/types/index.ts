@@ -369,12 +369,15 @@ export type DecisionAction =
 
 export type CaseStatus =
   | 'NEW'
+  | 'OPEN'
   | 'INVESTIGATING'
   | 'READY'
   | 'IN_REVIEW'
+  | 'ESCALATED'
   | 'ACTIONED'
-  | 'CLOSED'
-  | 'ESCALATED';
+  | 'RESOLVED'
+  | 'FALSE_POSITIVE'
+  | 'CLOSED';
 
 // Legacy alias
 export type InvestigationStatus =
@@ -421,6 +424,12 @@ export interface Case {
   humanActionTaken?: string;
   humanDisposition?: 'CONFIRMED_FRAUD' | 'MARKED_LEGITIMATE' | 'INCONCLUSIVE';
   assignedTo?: string;
+  assignedAt?: string;
+  assignedBy?: string;
+  resolutionReason?: string;
+  resolutionNotes?: string;
+  resolvedBy?: string;
+  resolvedAt?: string;
   reasonCodes?: ReasonCode[];
   investigationSummary?: string;
   agentFindings?: any[];
