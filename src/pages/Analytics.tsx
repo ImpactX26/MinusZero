@@ -150,7 +150,7 @@ export const Analytics: React.FC = () => {
   }, [liveCases]);
 
   // ─── 6. Date Range Filtering Utility ───────────────────────────────────────
-  const now = useMemo(() => new Date(), []);
+  const now = useMemo(() => new Date(), [dateRange]);
 
   const isWithinDateRange = (isoTimestamp?: string): boolean => {
     if (!isoTimestamp) return true;
@@ -179,12 +179,15 @@ export const Analytics: React.FC = () => {
     return 'COMPLETED';
   };
 
-  // Risk Band Classifier
-  const classifyRiskBand = (score?: number): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' => {
+  // Risk Band Classifier (Aligned strictly with getRiskLevel in riskEngine.ts)
+  const classifyRiskBand = (score?: number, level?: string): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' => {
+    if (level && ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(level.toUpperCase())) {
+      return level.toUpperCase() as any;
+    }
     const sc = typeof score === 'number' && !isNaN(score) ? score : 0;
-    if (sc >= 90) return 'CRITICAL';
-    if (sc >= 70) return 'HIGH';
-    if (sc >= 31) return 'MEDIUM';
+    if (sc > 90) return 'CRITICAL';
+    if (sc > 70) return 'HIGH';
+    if (sc > 30) return 'MEDIUM';
     return 'LOW';
   };
 
@@ -209,7 +212,7 @@ export const Analytics: React.FC = () => {
 
       // 3. Risk Band Filter
       if (riskBandFilter !== 'ALL') {
-        const band = classifyRiskBand(tx.risk_score);
+        const band = classifyRiskBand(tx.risk_score, tx.risk_level);
         if (band !== riskBandFilter) return false;
       }
 
@@ -240,7 +243,7 @@ export const Analytics: React.FC = () => {
 
       // 3. Risk Band Filter
       if (riskBandFilter !== 'ALL') {
-        const band = classifyRiskBand(cs.riskScore);
+        const band = classifyRiskBand(cs.riskScore, cs.riskLevel);
         if (band !== riskBandFilter) return false;
       }
 
@@ -293,7 +296,7 @@ export const Analytics: React.FC = () => {
 
       if (typeof tx.risk_score === 'number' && !isNaN(tx.risk_score)) {
         scoredTxCount++;
-        const band = classifyRiskBand(tx.risk_score);
+        const band = classifyRiskBand(tx.risk_score, tx.risk_level);
         if (band === 'LOW') lowRiskCount++;
         else if (band === 'MEDIUM') medRiskCount++;
         else if (band === 'HIGH') highRiskCount++;
@@ -618,9 +621,9 @@ export const Analytics: React.FC = () => {
             >
               <option value="ALL">All Risk Bands</option>
               <option value="LOW">LOW (0 - 30)</option>
-              <option value="MEDIUM">MEDIUM (31 - 69)</option>
-              <option value="HIGH">HIGH (70 - 89)</option>
-              <option value="CRITICAL">CRITICAL (90 - 100)</option>
+              <option value="MEDIUM">MEDIUM (31 - 70)</option>
+              <option value="HIGH">HIGH (71 - 90)</option>
+              <option value="CRITICAL">CRITICAL (91 - 100)</option>
             </select>
           </div>
 
@@ -901,17 +904,17 @@ export const Analytics: React.FC = () => {
                   <div
                     style={{ width: `${Math.round((metrics.medRiskCount / metrics.scoredTxCount) * 100)}%` }}
                     className="bg-amber-500 transition-all duration-500"
-                    title={`MEDIUM (31-69): ${metrics.medRiskCount}`}
+                    title={`MEDIUM (31-70): ${metrics.medRiskCount}`}
                   />
                   <div
                     style={{ width: `${Math.round((metrics.highRiskCount / metrics.scoredTxCount) * 100)}%` }}
                     className="bg-orange-500 transition-all duration-500"
-                    title={`HIGH (70-89): ${metrics.highRiskCount}`}
+                    title={`HIGH (71-90): ${metrics.highRiskCount}`}
                   />
                   <div
                     style={{ width: `${Math.round((metrics.critRiskCount / metrics.scoredTxCount) * 100)}%` }}
                     className="bg-rose-500 transition-all duration-500"
-                    title={`CRITICAL (90-100): ${metrics.critRiskCount}`}
+                    title={`CRITICAL (91-100): ${metrics.critRiskCount}`}
                   />
                 </div>
 
@@ -931,7 +934,7 @@ export const Analytics: React.FC = () => {
                     onClick={() => setRiskBandFilter('MEDIUM')}
                     className="p-2 rounded-lg bg-[var(--bg-root)] border border-[var(--border)] cursor-pointer hover:border-amber-500/50 transition"
                   >
-                    <div className="text-[9px] font-bold text-amber-500 font-mono">MED (31-69)</div>
+                    <div className="text-[9px] font-bold text-amber-500 font-mono">MED (31-70)</div>
                     <div className="text-base font-black font-mono text-[var(--text-primary)]">{metrics.medRiskCount}</div>
                     <div className="text-[9px] text-[var(--text-muted)] font-mono">
                       {Math.round((metrics.medRiskCount / metrics.scoredTxCount) * 100)}%
@@ -942,7 +945,7 @@ export const Analytics: React.FC = () => {
                     onClick={() => setRiskBandFilter('HIGH')}
                     className="p-2 rounded-lg bg-[var(--bg-root)] border border-[var(--border)] cursor-pointer hover:border-orange-500/50 transition"
                   >
-                    <div className="text-[9px] font-bold text-orange-500 font-mono">HIGH (70-89)</div>
+                    <div className="text-[9px] font-bold text-orange-500 font-mono">HIGH (71-90)</div>
                     <div className="text-base font-black font-mono text-[var(--text-primary)]">{metrics.highRiskCount}</div>
                     <div className="text-[9px] text-[var(--text-muted)] font-mono">
                       {Math.round((metrics.highRiskCount / metrics.scoredTxCount) * 100)}%
@@ -953,7 +956,7 @@ export const Analytics: React.FC = () => {
                     onClick={() => setRiskBandFilter('CRITICAL')}
                     className="p-2 rounded-lg bg-[var(--bg-root)] border border-[var(--border)] cursor-pointer hover:border-rose-500/50 transition"
                   >
-                    <div className="text-[9px] font-bold text-rose-500 font-mono">CRIT (90-100)</div>
+                    <div className="text-[9px] font-bold text-rose-500 font-mono">CRIT (91-100)</div>
                     <div className="text-base font-black font-mono text-rose-500">{metrics.critRiskCount}</div>
                     <div className="text-[9px] text-[var(--text-muted)] font-mono">
                       {Math.round((metrics.critRiskCount / metrics.scoredTxCount) * 100)}%

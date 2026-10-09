@@ -45,6 +45,17 @@ export const LiveEvents: React.FC = () => {
   }, []);
 
   const getEventEnrichment = (tx: Transaction) => {
+    // Prefer persisted risk evaluation from canonical risk engine when available
+    if (typeof tx.risk_score === 'number' && !isNaN(tx.risk_score) && tx.risk_level) {
+      const isCritical = tx.risk_level === 'CRITICAL' || tx.risk_level === 'HIGH';
+      let signal = 'Normal activity';
+      if (tx.risk_level === 'CRITICAL') signal = 'Multiple correlated risk signals';
+      else if (tx.risk_level === 'HIGH') signal = 'Elevated risk signals';
+      else if (tx.risk_level === 'MEDIUM') signal = 'Moderate deviation detected';
+      return { riskLevel: tx.risk_level, riskScore: tx.risk_score, signal, isCritical };
+    }
+
+    // Fallback heuristic for synthetic fixtures without persisted risk metadata
     let riskLevel = 'LOW';
     let riskScore = 15;
     let signal = 'Normal activity';
