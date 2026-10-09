@@ -15,7 +15,6 @@ import {
   Scale,
   FileText,
   Shield,
-  Layers,
   Store,
   CreditCard,
   ChevronRight,
@@ -31,7 +30,8 @@ import {
   X,
   ArrowLeft,
   Check,
-  Eye
+  Eye,
+  Sparkles
 } from 'lucide-react';
 import { CANONICAL_SCENARIOS, SYNTHETIC_NETWORK_SIGNALS } from '../data/scenarios';
 import { evaluateTransactionRisk, RiskEvaluationInput } from '../risk/riskEngine';
@@ -92,6 +92,56 @@ export const AGENT_METAS: AgentMeta[] = [
   { name: 'Narrator', stageNumber: '11', icon: FileText, accentColor: '#3157D5', bgLight: '#EEF2FF', status: 'VERIFIED', statusColor: 'text-[#3157D5] bg-[#EEF2FF] border-[#C7D2FE]', latency: '14ms', domain: 'NARRATIVE', riskContribution: 'CRITICAL' },
 ];
 
+// Interactive Neural Network Dependency Definitions
+export interface GraphEdge {
+  from: string;
+  to: string;
+  label?: string;
+}
+
+export const NETWORK_DEPENDENCIES: GraphEdge[] = [
+  // Layer 0 -> Layer 1 (Transaction triggers all 6 telemetry domain agents)
+  { from: 'Transaction', to: 'Behaviour' },
+  { from: 'Transaction', to: 'Device' },
+  { from: 'Transaction', to: 'Identity' },
+  { from: 'Transaction', to: 'Location' },
+  { from: 'Transaction', to: 'Network' },
+  { from: 'Transaction', to: 'History' },
+
+  // Layer 1 -> Layer 2 (6 Telemetry domain agents converge into Correlator)
+  { from: 'Behaviour', to: 'Correlator' },
+  { from: 'Device', to: 'Correlator' },
+  { from: 'Identity', to: 'Correlator' },
+  { from: 'Location', to: 'Correlator' },
+  { from: 'Network', to: 'Correlator' },
+  { from: 'History', to: 'Correlator' },
+
+  // Layer 2 -> Layer 2/3 (Correlator feeds Challenger counter-hypothesis testing)
+  { from: 'Correlator', to: 'Challenger' },
+
+  // Layer 2/3 -> Layer 3 (Correlator & Challenger feed Verifier)
+  { from: 'Correlator', to: 'Verifier' },
+  { from: 'Challenger', to: 'Verifier' },
+
+  // Layer 3 -> Layer 4 (Verifier feeds Narrator executive synthesis)
+  { from: 'Verifier', to: 'Narrator' },
+];
+
+// 5-Layer Neural Network Coordinate Architecture (Internal Canvas Grid 1080px x 440px)
+export const NEURAL_LAYOUT_COORDS: Record<string, { x: number; y: number; layer: number }> = {
+  Transaction: { x: 35, y: 195, layer: 0 },
+  Behaviour: { x: 235, y: 20, layer: 1 },
+  Device: { x: 235, y: 88, layer: 1 },
+  Identity: { x: 235, y: 156, layer: 1 },
+  Location: { x: 235, y: 224, layer: 1 },
+  Network: { x: 235, y: 292, layer: 1 },
+  History: { x: 235, y: 360, layer: 1 },
+  Correlator: { x: 465, y: 135, layer: 2 },
+  Challenger: { x: 465, y: 255, layer: 2 },
+  Verifier: { x: 695, y: 195, layer: 3 },
+  Narrator: { x: 900, y: 195, layer: 4 },
+};
+
 export const InvestigationWorkspace: React.FC = () => {
   const { resolvedTheme } = useTheme();
   // Read active scenario key from sessionStorage or fallback to high_risk_c1003
@@ -122,23 +172,33 @@ export const InvestigationWorkspace: React.FC = () => {
   const [currentPlayIndex, setCurrentPlayIndex] = useState<number>(-1);
   const [isPipelineComplete, setIsPipelineComplete] = useState(false);
 
+  // Reduced motion preference
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   // Gauge hover breakdown state
   const [isGaugeHovered, setIsGaugeHovered] = useState(false);
 
   // Fullscreen topology state
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [fullscreenLayout, setFullscreenLayout] = useState<'grid' | 'flow'>('grid');
+  const [fullscreenLayout, setFullscreenLayout] = useState<'neural' | 'grid' | 'flow'>('neural');
   const [showDrawerInFullscreen, setShowDrawerInFullscreen] = useState(true);
-  const preFullscreenTransform = useRef({ x: 10, y: 0, scale: 1 });
+  const preFullscreenTransform = useRef({ x: 0, y: 0, scale: 1 });
 
   // Canvas Pan & Zoom state (regular canvas)
-  const [transform, setTransform] = useState({ x: 10, y: 0, scale: 1 });
+  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [isPanning, setIsPanning] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
 
   // Canvas Pan & Zoom state (fullscreen canvas)
-  const [fullscreenTransform, setFullscreenTransform] = useState({ x: 30, y: 20, scale: 0.95 });
+  const [fullscreenTransform, setFullscreenTransform] = useState({ x: 20, y: 15, scale: 0.95 });
   const [isFullscreenPanning, setIsFullscreenPanning] = useState(false);
   const [fullscreenDragStart, setFullscreenDragStart] = useState({ x: 0, y: 0 });
   const fullscreenCanvasRef = useRef<HTMLDivElement>(null);
@@ -181,7 +241,6 @@ export const InvestigationWorkspace: React.FC = () => {
       channel: scenario.transaction.channel || 'MOBILE_APP',
     };
 
-    // Device resolution: if unrecognized rogue device, leave undefined so Risk Engine adds NEW_OR_UNVERIFIED_DEVICE (+15 pts)
     const primaryDevice = scenario.devices.find(d => d.device_id === transaction.device_id);
 
     const primaryNetwork: NetworkSignal | undefined = scenario.network_signals?.[0] || 
@@ -255,10 +314,121 @@ export const InvestigationWorkspace: React.FC = () => {
     return () => clearInterval(interval);
   }, [isPlayingDemo]);
 
+  // Node position calculators
+  const getNodePosNeural = useCallback((nodeName: string) => {
+    const base = NEURAL_LAYOUT_COORDS[nodeName] || { x: 50, y: 50, layer: 0 };
+    const offset = nodeOffsets[nodeName] || { dx: 0, dy: 0 };
+    return {
+      x: base.x + offset.dx,
+      y: base.y + offset.dy,
+      w: 152,
+      h: 58,
+      layer: base.layer
+    };
+  }, [nodeOffsets]);
+
+  const getNodePosFlow = useCallback((index: number, nodeName: string) => {
+    const nodeWidth = 180;
+    const nodeGap = 40;
+    const baseX = 24 + index * (nodeWidth + nodeGap);
+    const baseY = 160;
+    const offset = nodeOffsets[nodeName] || { dx: 0, dy: 0 };
+    return {
+      x: baseX + offset.dx,
+      y: baseY + offset.dy,
+      w: nodeWidth,
+      h: 60,
+      layer: index
+    };
+  }, [nodeOffsets]);
+
+  const getNodePosGrid = useCallback((index: number, nodeName: string) => {
+    const nodeWidth = 180;
+    const nodeGapX = 45;
+    const nodeGapY = 70;
+    let row = 0;
+    let col = index;
+    if (index >= 6) {
+      row = 1;
+      col = index - 6;
+    }
+    const baseX = 30 + col * (nodeWidth + nodeGapX);
+    const baseY = 50 + row * (60 + nodeGapY);
+    const offset = nodeOffsets[nodeName] || { dx: 0, dy: 0 };
+    return {
+      x: baseX + offset.dx,
+      y: baseY + offset.dy,
+      w: nodeWidth,
+      h: 60,
+      layer: index
+    };
+  }, [nodeOffsets]);
+
+  // Mathematical Fit to View
+  const fitToView = useCallback(() => {
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const canvasW = rect.width;
+    const canvasH = rect.height;
+
+    const totalW = 1080;
+    const totalH = 440;
+
+    const scaleW = (canvasW - 24) / totalW;
+    const scaleH = (canvasH - 24) / totalH;
+    const scale = Math.min(Math.max(Math.min(scaleW, scaleH), 0.35), 1.25);
+
+    const x = (canvasW - totalW * scale) / 2;
+    const y = (canvasH - totalH * scale) / 2;
+
+    setTransform({ x: Math.round(x), y: Math.max(4, Math.round(y)), scale });
+  }, []);
+
+  const fitToViewFullscreen = useCallback(() => {
+    if (!fullscreenCanvasRef.current) return;
+    const rect = fullscreenCanvasRef.current.getBoundingClientRect();
+    const canvasW = rect.width;
+    const canvasH = rect.height;
+
+    if (fullscreenLayout === 'neural') {
+      const totalW = 1080;
+      const totalH = 440;
+      const scale = Math.min(Math.max(Math.min((canvasW - 48) / totalW, (canvasH - 48) / totalH), 0.4), 1.35);
+      const x = (canvasW - totalW * scale) / 2;
+      const y = (canvasH - totalH * scale) / 2;
+      setFullscreenTransform({ x: Math.round(x), y: Math.round(y), scale });
+    } else if (fullscreenLayout === 'grid') {
+      const totalW = 6 * 180 + 5 * 45 + 60;
+      const totalH = 2 * 60 + 70 + 80;
+      const scale = Math.min(Math.max(Math.min((canvasW - 60) / totalW, (canvasH - 60) / totalH), 0.45), 1.35);
+      const x = (canvasW - totalW * scale) / 2;
+      const y = (canvasH - totalH * scale) / 2;
+      setFullscreenTransform({ x: Math.round(x), y: Math.round(y), scale });
+    } else {
+      const totalW = 11 * 180 + 10 * 40 + 60;
+      const totalH = 60 + 80;
+      const scale = Math.min(Math.max(Math.min((canvasW - 60) / totalW, (canvasH - 60) / totalH), 0.32), 1.2);
+      const x = (canvasW - totalW * scale) / 2;
+      const y = (canvasH - totalH * scale) / 2;
+      setFullscreenTransform({ x: Math.round(x), y: Math.round(y), scale });
+    }
+  }, [fullscreenLayout]);
+
+  // Auto-fit on mount & container resize
+  useEffect(() => {
+    fitToView();
+    const el = canvasRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => fitToView());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fitToView]);
+
   // Fullscreen toggle handlers
   const handleEnterFullscreen = () => {
     preFullscreenTransform.current = { ...transform };
     setIsFullscreen(true);
+    setTimeout(fitToViewFullscreen, 60);
   };
 
   const handleExitFullscreen = () => {
@@ -270,6 +440,25 @@ export const InvestigationWorkspace: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      const keyAgentMap: Record<string, string> = {
+        '1': 'Transaction',
+        '2': 'Behaviour',
+        '3': 'Device',
+        '4': 'Identity',
+        '5': 'Location',
+        '6': 'Network',
+        '7': 'History',
+        '8': 'Correlator',
+        '9': 'Challenger',
+        '0': 'Verifier',
+        '-': 'Narrator'
+      };
+
+      if (keyAgentMap[e.key]) {
+        setSelectedAgentName(keyAgentMap[e.key]);
+        return;
+      }
 
       if (e.key === 'Escape') {
         if (isFullscreen) {
@@ -285,7 +474,7 @@ export const InvestigationWorkspace: React.FC = () => {
         if (isFullscreen) {
           setFullscreenTransform(prev => ({ ...prev, scale: Math.max(prev.scale * 0.85, 0.4) }));
         } else {
-          setTransform(prev => ({ ...prev, scale: Math.max(prev.scale * 0.85, 0.5) }));
+          setTransform(prev => ({ ...prev, scale: Math.max(prev.scale * 0.85, 0.4) }));
         }
       } else if (e.key.toLowerCase() === 'f') {
         if (isFullscreen) {
@@ -303,7 +492,7 @@ export const InvestigationWorkspace: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullscreen, transform, fullscreenTransform]);
+  }, [isFullscreen, transform, fullscreenTransform, fitToView, fitToViewFullscreen]);
 
   // Canvas Pan & Drag handlers (regular canvas)
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -410,7 +599,7 @@ export const InvestigationWorkspace: React.FC = () => {
       const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
       setTransform(prev => ({
         ...prev,
-        scale: Math.min(Math.max(prev.scale * zoomFactor, 0.4), 1.9)
+        scale: Math.min(Math.max(prev.scale * zoomFactor, 0.35), 1.9)
       }));
     };
 
@@ -435,58 +624,14 @@ export const InvestigationWorkspace: React.FC = () => {
     return () => el.removeEventListener('wheel', handleWheel);
   }, [isFullscreen]);
 
-  // Mathematical Fit to View
-  const fitToView = useCallback(() => {
-    if (!canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const canvasW = rect.width;
-    const canvasH = rect.height;
-
-    const totalW = 11 * 196 + 10 * 48 + 48; // 2688px
-    const totalH = 126 + 60; // 186px
-
-    const scaleW = (canvasW - 32) / totalW;
-    const scaleH = (canvasH - 24) / totalH;
-    const scale = Math.min(Math.max(Math.min(scaleW, scaleH), 0.35), 1.2);
-
-    const x = (canvasW - totalW * scale) / 2;
-    const y = (canvasH - totalH * scale) / 2;
-
-    setTransform({ x: Math.round(x), y: Math.max(10, Math.round(y)), scale });
-  }, []);
-
-  const fitToViewFullscreen = useCallback(() => {
-    if (!fullscreenCanvasRef.current) return;
-    const rect = fullscreenCanvasRef.current.getBoundingClientRect();
-    const canvasW = rect.width;
-    const canvasH = rect.height;
-
-    if (fullscreenLayout === 'grid') {
-      const totalW = 6 * 196 + 5 * 54 + 80; // 1446px
-      const totalH = 2 * 126 + 90 + 80; // 422px
-
-      const scale = Math.min(Math.max(Math.min((canvasW - 80) / totalW, (canvasH - 80) / totalH), 0.45), 1.35);
-      const x = (canvasW - totalW * scale) / 2;
-      const y = (canvasH - totalH * scale) / 2;
-      setFullscreenTransform({ x: Math.round(x), y: Math.round(y), scale });
-    } else {
-      const totalW = 11 * 196 + 10 * 48 + 80;
-      const totalH = 126 + 80;
-      const scale = Math.min(Math.max(Math.min((canvasW - 80) / totalW, (canvasH - 80) / totalH), 0.32), 1.2);
-      const x = (canvasW - totalW * scale) / 2;
-      const y = (canvasH - totalH * scale) / 2;
-      setFullscreenTransform({ x: Math.round(x), y: Math.round(y), scale });
-    }
-  }, [fullscreenLayout]);
-
   const resetLayout = useCallback(() => {
     setNodeOffsets({});
     if (isFullscreen) {
-      setFullscreenTransform({ x: 30, y: 20, scale: 0.95 });
+      fitToViewFullscreen();
     } else {
-      setTransform({ x: 10, y: 0, scale: 1 });
+      fitToView();
     }
-  }, [isFullscreen]);
+  }, [isFullscreen, fitToView, fitToViewFullscreen]);
 
   const zoomIn = () => {
     if (isFullscreen) {
@@ -500,44 +645,8 @@ export const InvestigationWorkspace: React.FC = () => {
     if (isFullscreen) {
       setFullscreenTransform(prev => ({ ...prev, scale: Math.max(prev.scale * 0.85, 0.4) }));
     } else {
-      setTransform(prev => ({ ...prev, scale: Math.max(prev.scale * 0.85, 0.5) }));
+      setTransform(prev => ({ ...prev, scale: Math.max(prev.scale * 0.85, 0.4) }));
     }
-  };
-
-  // Node position calculators
-  const getNodePosFlow = (index: number, nodeName: string) => {
-    const nodeWidth = 196;
-    const nodeGap = 48;
-    const baseX = 24 + index * (nodeWidth + nodeGap);
-    const baseY = 40;
-    const offset = nodeOffsets[nodeName] || { dx: 0, dy: 0 };
-    return {
-      x: baseX + offset.dx,
-      y: baseY + offset.dy,
-      w: nodeWidth,
-      h: 126,
-    };
-  };
-
-  const getNodePosGrid = (index: number, nodeName: string) => {
-    const nodeWidth = 196;
-    const nodeGapX = 54;
-    const nodeGapY = 90;
-    let row = 0;
-    let col = index;
-    if (index >= 6) {
-      row = 1;
-      col = index - 6;
-    }
-    const baseX = 40 + col * (nodeWidth + nodeGapX);
-    const baseY = 50 + row * (126 + nodeGapY);
-    const offset = nodeOffsets[nodeName] || { dx: 0, dy: 0 };
-    return {
-      x: baseX + offset.dx,
-      y: baseY + offset.dy,
-      w: nodeWidth,
-      h: 126,
-    };
   };
 
   // Confirmation & Case Creation
@@ -888,6 +997,301 @@ export const InvestigationWorkspace: React.FC = () => {
   const circumference = 2 * Math.PI * circleRadius;
   const strokeDashoffset = circumference - (scorePercent / 100) * circumference;
 
+  // Render Neural Network Graph Elements (Shared for main canvas and fullscreen)
+  const renderNeuralGraph = (
+    layoutType: 'neural' | 'grid' | 'flow' = 'neural',
+    isFs: boolean = false
+  ) => {
+    const getNodePos = (name: string, index: number) => {
+      if (layoutType === 'grid') return getNodePosGrid(index, name);
+      if (layoutType === 'flow') return getNodePosFlow(index, name);
+      return getNodePosNeural(name);
+    };
+
+    return (
+      <>
+        {/* SVG Bezier Neural Connections */}
+        <svg
+          className="absolute pointer-events-none overflow-visible"
+          style={{ width: isFs ? '2000px' : '1100px', height: isFs ? '1000px' : '450px' }}
+        >
+          <defs>
+            <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+            <filter id="glow-rose" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+
+            <marker
+              id="arrow-neural-default"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="5"
+              markerHeight="5"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1 L 9 5 L 0 9 z" fill={resolvedTheme === 'dark' ? '#334155' : '#94A3B8'} />
+            </marker>
+            <marker
+              id="arrow-neural-active"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1 L 9 5 L 0 9 z" fill="#38BDF8" />
+            </marker>
+            <marker
+              id="arrow-neural-critical"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1 L 9 5 L 0 9 z" fill="#F43F5E" />
+            </marker>
+          </defs>
+
+          {/* Draw edges based on dependency graph or linear fallback */}
+          {layoutType === 'neural' ? (
+            NETWORK_DEPENDENCIES.map((edge, i) => {
+              const srcIdx = AGENT_METAS.findIndex(m => m.name === edge.from);
+              const tgtIdx = AGENT_METAS.findIndex(m => m.name === edge.to);
+              const p1 = getNodePos(edge.from, srcIdx);
+              const p2 = getNodePos(edge.to, tgtIdx);
+
+              const x1 = p1.x + p1.w;
+              const y1 = p1.y + p1.h / 2;
+              const x2 = p2.x;
+              const y2 = p2.y + p2.h / 2;
+
+              const isSourceSelected = selectedAgentName === edge.from;
+              const isTargetSelected = selectedAgentName === edge.to;
+              const isConnectedToSelection = isSourceSelected || isTargetSelected;
+
+              const srcMeta = AGENT_METAS.find(m => m.name === edge.from);
+              const tgtMeta = AGENT_METAS.find(m => m.name === edge.to);
+              const isEdgeCritical = srcMeta?.status === 'CRITICAL' || tgtMeta?.status === 'CRITICAL';
+
+              const isRunning = isPlayingDemo && (currentPlayIndex === srcIdx || currentPlayIndex === tgtIdx);
+
+              const dx = Math.max(30, Math.abs(x2 - x1) * 0.45);
+              const pathD = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2 - 6} ${y2}`;
+
+              let strokeColor = resolvedTheme === 'dark' ? '#1E293B' : '#CBD5E1';
+              let strokeWidth = '1.75';
+              let markerId = 'url(#arrow-neural-default)';
+              let filter = undefined;
+
+              if (isConnectedToSelection || isRunning) {
+                strokeColor = '#38BDF8';
+                strokeWidth = '2.75';
+                markerId = 'url(#arrow-neural-active)';
+                filter = 'url(#glow-cyan)';
+              } else if (isEdgeCritical) {
+                strokeColor = resolvedTheme === 'dark' ? 'rgba(244, 63, 94, 0.45)' : '#FDA4AF';
+                strokeWidth = '2';
+                markerId = 'url(#arrow-neural-critical)';
+                filter = 'url(#glow-rose)';
+              }
+
+              return (
+                <g key={i}>
+                  <path
+                    d={pathD}
+                    fill="none"
+                    stroke={strokeColor}
+                    strokeWidth={strokeWidth}
+                    filter={filter}
+                    markerEnd={markerId}
+                    strokeDasharray={edge.from === 'History' || edge.from === 'Challenger' ? '4 3' : 'none'}
+                    className="transition-all duration-300"
+                  />
+                  {/* Active connection animated pulse particle */}
+                  {(isRunning || (isPlayingDemo && currentPlayIndex > srcIdx)) && !prefersReducedMotion && (
+                    <circle r="3.5" fill={isEdgeCritical ? "#F43F5E" : "#38BDF8"} filter="url(#glow-cyan)">
+                      <animateMotion
+                        path={pathD}
+                        dur={isRunning ? "1.2s" : "3.5s"}
+                        repeatCount="indefinite"
+                      />
+                    </circle>
+                  )}
+                </g>
+              );
+            })
+          ) : (
+            AGENT_METAS.slice(0, -1).map((meta, i) => {
+              const nextMeta = AGENT_METAS[i + 1];
+              const p1 = getNodePos(meta.name, i);
+              const p2 = getNodePos(nextMeta.name, i + 1);
+
+              const x1 = p1.x + p1.w;
+              const y1 = p1.y + p1.h / 2;
+              const x2 = p2.x;
+              const y2 = p2.y + p2.h / 2;
+
+              const isConnected = selectedAgentName === meta.name || selectedAgentName === nextMeta.name;
+              const isRunning = isPlayingDemo && currentPlayIndex === i + 1;
+
+              const dx = Math.abs(x2 - x1) * 0.4;
+              const pathD = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2 - 6} ${y2}`;
+
+              return (
+                <g key={i}>
+                  <path
+                    d={pathD}
+                    fill="none"
+                    stroke={isConnected || isRunning ? '#38BDF8' : '#1E293B'}
+                    strokeWidth={isConnected ? '2.5' : '1.75'}
+                    markerEnd={isConnected ? 'url(#arrow-neural-active)' : 'url(#arrow-neural-default)'}
+                  />
+                  {isRunning && !prefersReducedMotion && (
+                    <circle r="4" fill="#38BDF8">
+                      <animateMotion path={pathD} dur="1.2s" repeatCount="indefinite" />
+                    </circle>
+                  )}
+                </g>
+              );
+            })
+          )}
+        </svg>
+
+        {/* 11 Agent Neural Nodes */}
+        <div className="relative">
+          {AGENT_METAS.map((meta, idx) => {
+            const isSelected = selectedAgentName === meta.name;
+            const isCurrentlyPlaying = isPlayingDemo && currentPlayIndex === idx;
+            const isCompletedInPlayback = isPlayingDemo && currentPlayIndex > idx;
+            const Icon = meta.icon;
+            const pos = getNodePos(meta.name, idx);
+
+            const isCriticalState = meta.status === 'CRITICAL';
+            const isWarningState = meta.status.includes('REJECTED') || meta.status === 'ELEVATED';
+            const isVerifiedState = meta.status === 'VERIFIED' || isCompletedInPlayback;
+
+            // Connected edges highlight status
+            const isConnectedToSelected = layoutType === 'neural' && NETWORK_DEPENDENCIES.some(
+              e => (e.from === selectedAgentName && e.to === meta.name) || (e.to === selectedAgentName && e.from === meta.name)
+            );
+
+            return (
+              <div
+                key={meta.name}
+                tabIndex={0}
+                role="button"
+                aria-label={`${meta.name} Agent - Stage ${meta.stageNumber} - Status: ${meta.status}`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedAgentName(meta.name);
+                  }
+                }}
+                onPointerDown={(e) => handleNodePointerDown(e, meta.name)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedAgentName(meta.name);
+                }}
+                style={{
+                  left: `${pos.x}px`,
+                  top: `${pos.y}px`,
+                  width: `${pos.w}px`,
+                  height: `${pos.h}px`,
+                }}
+                className={`canvas-node absolute rounded-xl border flex flex-col justify-between p-2 cursor-grab active:cursor-grabbing transition-all duration-200 select-none outline-hidden ${
+                  isSelected
+                    ? 'bg-[#0F172A] border-cyan-400 ring-2 ring-cyan-400/50 shadow-[0_0_20px_rgba(56,189,248,0.35)] -translate-y-1 scale-103 z-30'
+                    : isCurrentlyPlaying
+                    ? 'bg-[#0F172A] border-cyan-400 ring-2 ring-cyan-400/60 shadow-[0_0_25px_rgba(56,189,248,0.5)] animate-pulse z-30'
+                    : isConnectedToSelected
+                    ? 'bg-[#0B0F19] border-cyan-500/70 ring-1 ring-cyan-500/30 shadow-[0_0_12px_rgba(56,189,248,0.2)] z-20'
+                    : isCriticalState
+                    ? 'bg-[#0B0F19] border-rose-500/60 hover:border-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.18)] z-10'
+                    : isWarningState
+                    ? 'bg-[#0B0F19] border-amber-500/60 hover:border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.18)] z-10'
+                    : isVerifiedState
+                    ? 'bg-[#0B0F19] border-emerald-500/50 hover:border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)] z-10'
+                    : 'bg-[#0B0F19] border-slate-800 hover:border-slate-600 opacity-80 hover:opacity-100 z-10'
+                }`}
+              >
+                {/* Node Top Accent Glow Indicator */}
+                <div
+                  className="absolute top-0 left-3 right-3 h-0.5 rounded-full shadow-xs"
+                  style={{
+                    backgroundColor: isSelected
+                      ? '#38BDF8'
+                      : isCriticalState
+                      ? '#F43F5E'
+                      : isWarningState
+                      ? '#F59E0B'
+                      : meta.accentColor
+                  }}
+                />
+
+                {/* Node Row 1: Stage Number + Domain Icon + Accessible Status Pill */}
+                <div className="flex items-center justify-between pt-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-[9px] font-extrabold text-slate-400">
+                      {meta.stageNumber}
+                    </span>
+                    <div
+                      className="p-1 rounded-md shrink-0 flex items-center justify-center"
+                      style={{ backgroundColor: `${meta.accentColor}25`, color: meta.accentColor }}
+                    >
+                      <Icon className="h-3 w-3" />
+                    </div>
+                  </div>
+
+                  <span
+                    className={`text-[8.5px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 border shrink-0 ${
+                      isCurrentlyPlaying
+                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                        : isCompletedInPlayback || isVerifiedState
+                        ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                        : isCriticalState
+                        ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                        : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                    }`}
+                  >
+                    <span>
+                      {isCurrentlyPlaying
+                        ? 'RUN'
+                        : isCompletedInPlayback || isVerifiedState
+                        ? '✓ OK'
+                        : isCriticalState
+                        ? '! ALERT'
+                        : '▲ WARN'}
+                    </span>
+                  </span>
+                </div>
+
+                {/* Node Row 2: Agent Title & Risk Contribution */}
+                <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-800/80">
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-black text-slate-100 tracking-tight uppercase leading-tight truncate">
+                      {meta.name}
+                    </div>
+                  </div>
+                  <span className="font-mono text-[8.5px] font-bold text-rose-400 bg-rose-500/10 px-1 py-0.5 rounded border border-rose-500/20 shrink-0">
+                    {meta.riskContribution}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </>
+    );
+  };
+
   return (
     <div className="flex flex-col min-h-[calc(100vh-8.5rem)] space-y-4">
       {/* ─── 1. HERO HEADER ──────────────────────────────────────────────────── */}
@@ -926,7 +1330,7 @@ export const InvestigationWorkspace: React.FC = () => {
               </div>
             </div>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-              Deterministic 11-agent orchestration · Multi-dimensional evidence correlation · High-impact human decision gate
+              Interactive 11-agent neural network · Multi-dimensional evidence correlation · High-impact human decision gate
             </p>
           </div>
         </div>
@@ -1131,7 +1535,7 @@ export const InvestigationWorkspace: React.FC = () => {
                           ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-xs'
                           : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)]'
                       }`}
-                      title={`Click to focus ${sig.agent} Agent in topology`}
+                      title={`Click to focus ${sig.agent} Agent in neural network`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="h-2 w-2 rounded-full bg-[var(--danger)] shrink-0" />
@@ -1247,19 +1651,19 @@ export const InvestigationWorkspace: React.FC = () => {
           </div>
 
           {/* AI Investigation Pipeline Topology Canvas Container */}
-          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs flex flex-col overflow-hidden">
+          <div className="bg-[#0B0F19] rounded-xl border border-slate-800 shadow-xl flex flex-col overflow-hidden">
             
             {/* Pipeline Header with Controls & Demo Player */}
-            <div className="px-4 py-3 border-b border-[var(--border)] flex flex-wrap items-center justify-between gap-2.5 bg-[var(--surface-muted)]">
+            <div className="px-4 py-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2.5 bg-[#0F172A]">
               <div>
                 <div className="flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-[var(--primary)]" />
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                    AI Investigation Pipeline Topology
+                  <Sparkles className="h-4 w-4 text-cyan-400" />
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-100">
+                    AI Investigation Neural Network Topology
                   </h2>
                 </div>
-                <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                  11 specialized agents evaluate transaction telemetry · Drag nodes or pan canvas
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  11 autonomous agent nodes · Layered evidence correlation · Click agent node to inspect findings
                 </p>
               </div>
 
@@ -1270,8 +1674,8 @@ export const InvestigationWorkspace: React.FC = () => {
                   onClick={() => setIsPlayingDemo(!isPlayingDemo)}
                   className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
                     isPlayingDemo
-                      ? 'bg-[var(--primary)] text-white border-[var(--primary)] animate-pulse'
-                      : 'bg-[var(--surface)] text-[var(--primary)] border-[var(--border)] hover:bg-[var(--surface-muted)]'
+                      ? 'bg-cyan-500 text-slate-950 border-cyan-400 animate-pulse'
+                      : 'bg-slate-800 text-cyan-400 border-slate-700 hover:bg-slate-700'
                   }`}
                   title="Step through all 11 agents in sequence (Space)"
                 >
@@ -1282,47 +1686,47 @@ export const InvestigationWorkspace: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <Play className="h-3.5 w-3.5 text-[var(--primary)]" />
+                      <Play className="h-3.5 w-3.5 text-cyan-400" />
                       <span>Play Pipeline</span>
                     </>
                   )}
                 </button>
 
-                <div className="h-4 w-px bg-[var(--border)] mx-1" />
+                <div className="h-4 w-px bg-slate-700 mx-1" />
 
                 <button
                   onClick={zoomIn}
-                  className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
+                  className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
                   title="Zoom In (+)"
                 >
                   <ZoomIn className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={zoomOut}
-                  className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
+                  className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
                   title="Zoom Out (-)"
                 >
                   <ZoomOut className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={fitToView}
-                  className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
+                  className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
                   title="Fit to Canvas (F)"
                 >
                   <Check className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={resetLayout}
-                  className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
+                  className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
                   title="Reset Layout (R)"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                 </button>
                 
-                {/* WORKING REAL FULLSCREEN BUTTON */}
+                {/* Fullscreen Button */}
                 <button
                   onClick={handleEnterFullscreen}
-                  className="p-1.5 rounded-lg border border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white transition-colors cursor-pointer shadow-xs ml-1"
+                  className="p-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500 hover:text-slate-950 transition-colors cursor-pointer shadow-xs ml-1"
                   title="Expand to Fullscreen Workspace (Esc to close)"
                 >
                   <Maximize2 className="h-3.5 w-3.5" />
@@ -1330,19 +1734,19 @@ export const InvestigationWorkspace: React.FC = () => {
               </div>
             </div>
 
-            {/* Interactive Topology Horizontal Canvas */}
+            {/* Interactive Neural Topology Canvas */}
             <div
               ref={canvasRef}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
-              className="relative w-full h-[220px] bg-[var(--background)] overflow-hidden cursor-grab active:cursor-grabbing select-none"
+              className="relative w-full h-[360px] bg-[#060911] overflow-hidden cursor-grab active:cursor-grabbing select-none"
               style={{
-                backgroundImage: resolvedTheme === 'dark' ? 'radial-gradient(#22354D 1px, transparent 1px)' : 'radial-gradient(#CBD5E1 0.75px, transparent 0.75px)',
-                backgroundSize: '16px 16px'
+                backgroundImage: 'radial-gradient(circle, rgba(56, 189, 248, 0.08) 1px, transparent 1px)',
+                backgroundSize: '18px 18px'
               }}
             >
-              {/* Scalable & Pannable World Container */}
+              {/* Scalable & Pannable Neural Canvas Container */}
               <div
                 className="absolute left-0 top-0 transition-transform duration-75 ease-out"
                 style={{
@@ -1350,192 +1754,24 @@ export const InvestigationWorkspace: React.FC = () => {
                   transformOrigin: '0 0'
                 }}
               >
-                {/* SVG Connecting Edges with Arrowheads */}
-                <svg
-                  className="absolute pointer-events-none overflow-visible"
-                  style={{ width: '2800px', height: '220px' }}
-                >
-                  <defs>
-                    <marker
-                      id="arrow-default"
-                      viewBox="0 0 10 10"
-                      refX="8"
-                      refY="5"
-                      markerWidth="6"
-                      markerHeight="6"
-                      orient="auto-start-reverse"
-                    >
-                      <path d="M 0 1 L 9 5 L 0 9 z" fill={resolvedTheme === 'dark' ? '#304761' : '#94A3B8'} />
-                    </marker>
-                    <marker
-                      id="arrow-active"
-                      viewBox="0 0 10 10"
-                      refX="8"
-                      refY="5"
-                      markerWidth="6"
-                      markerHeight="6"
-                      orient="auto-start-reverse"
-                    >
-                      <path d="M 0 1 L 9 5 L 0 9 z" fill="var(--primary)" />
-                    </marker>
-                    <marker
-                      id="arrow-critical"
-                      viewBox="0 0 10 10"
-                      refX="8"
-                      refY="5"
-                      markerWidth="6"
-                      markerHeight="6"
-                      orient="auto-start-reverse"
-                    >
-                      <path d="M 0 1 L 9 5 L 0 9 z" fill="var(--danger)" />
-                    </marker>
-                  </defs>
-
-                  {/* Draw edges between adjacent nodes */}
-                  {AGENT_METAS.slice(0, -1).map((meta, i) => {
-                    const nextMeta = AGENT_METAS[i + 1];
-                    const p1 = getNodePosFlow(i, meta.name);
-                    const p2 = getNodePosFlow(i + 1, nextMeta.name);
-
-                    const x1 = p1.x + p1.w;
-                    const y1 = p1.y + p1.h / 2;
-                    const x2 = p2.x;
-                    const y2 = p2.y + p2.h / 2;
-
-                    const isSourceOrTargetSelected =
-                      selectedAgentName === meta.name || selectedAgentName === nextMeta.name;
-
-                    const isEdgeCritical =
-                      meta.status === 'CRITICAL' || nextMeta.status === 'CRITICAL';
-
-                    let strokeColor = resolvedTheme === 'dark' ? '#22354D' : '#CBD5E1';
-                    let markerId = 'url(#arrow-default)';
-
-                    if (isSourceOrTargetSelected) {
-                      strokeColor = 'var(--primary)';
-                      markerId = 'url(#arrow-active)';
-                    } else if (isEdgeCritical) {
-                      strokeColor = resolvedTheme === 'dark' ? 'rgba(255, 107, 118, 0.4)' : '#FDA4AF';
-                      markerId = 'url(#arrow-critical)';
-                    }
-
-                    const isCurrentPlayEdge = isPlayingDemo && currentPlayIndex === i + 1;
-
-                    return (
-                      <g key={i}>
-                        <line
-                          x1={x1}
-                          y1={y1}
-                          x2={x2 - 8}
-                          y2={y2}
-                          stroke={strokeColor}
-                          strokeWidth={isSourceOrTargetSelected ? '2.5' : '1.75'}
-                          strokeDasharray={meta.name === 'History' || meta.name === 'Challenger' ? '4 3' : 'none'}
-                          markerEnd={markerId}
-                          className="transition-colors duration-200"
-                        />
-                        {/* Animated traveling particle during play pipeline */}
-                        {isCurrentPlayEdge && (
-                          <circle
-                            cx={(x1 + x2) / 2}
-                            cy={(y1 + y2) / 2}
-                            r="5"
-                            fill="var(--primary)"
-                            className="animate-ping"
-                          />
-                        )}
-                      </g>
-                    );
-                  })}
-                </svg>
-
-                {/* 11 Agent Nodes */}
-                <div className="relative">
-                  {AGENT_METAS.map((meta, idx) => {
-                    const isSelected = selectedAgentName === meta.name;
-                    const isCurrentlyPlaying = isPlayingDemo && currentPlayIndex === idx;
-                    const isCompletedInPlayback = isPlayingDemo && currentPlayIndex > idx;
-                    const Icon = meta.icon;
-                    const pos = getNodePosFlow(idx, meta.name);
-
-                    return (
-                      <div
-                        key={meta.name}
-                        onPointerDown={(e) => handleNodePointerDown(e, meta.name)}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedAgentName(meta.name);
-                        }}
-                        style={{
-                          left: `${pos.x}px`,
-                          top: `${pos.y}px`,
-                          width: `${pos.w}px`,
-                          height: `${pos.h}px`,
-                        }}
-                        className={`canvas-node absolute bg-[var(--surface)] rounded-xl border flex flex-col justify-between p-3 cursor-grab active:cursor-grabbing transition-all duration-200 ${
-                          isSelected
-                            ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/25 shadow-card -translate-y-1 scale-102 z-20'
-                            : isCurrentlyPlaying
-                            ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/40 shadow-card animate-pulse z-20'
-                            : 'border-[var(--border)] hover:border-[var(--border-strong)] hover:shadow-xs shadow-none z-10 opacity-95 hover:opacity-100 hover:-translate-y-0.5'
-                        }`}
-                      >
-                        {/* Top Accent Color Line */}
-                        <div
-                          className="absolute top-0 left-0 right-0 h-1 rounded-t-xl"
-                          style={{ backgroundColor: meta.accentColor }}
-                        />
-
-                        {/* Top Row: Stage Number + Icon + Status Symbol */}
-                        <div className="flex items-center justify-between pt-0.5">
-                          <span className="font-mono text-[10px] font-extrabold text-[var(--text-secondary)]">
-                            {meta.stageNumber}
-                          </span>
-                          <div
-                            className="p-1 rounded-md"
-                            style={{ backgroundColor: `${meta.accentColor}20`, color: meta.accentColor }}
-                          >
-                            <Icon className="h-3.5 w-3.5" />
-                          </div>
-                          <span className={`text-[9px] font-mono font-bold px-1 rounded ${
-                            isCompletedInPlayback
-                              ? 'text-[var(--success)] bg-emerald-500/10'
-                              : meta.status === 'CRITICAL'
-                              ? 'text-[var(--danger)] bg-rose-500/10'
-                              : 'text-[var(--success)] bg-emerald-500/10'
-                          }`}>
-                            {isCompletedInPlayback ? '✓' : meta.status === 'CRITICAL' ? '!' : '✓'}
-                          </span>
-                        </div>
-
-                        {/* Middle: Agent Name */}
-                        <div>
-                          <div className="text-xs font-black text-[var(--text-primary)] tracking-tight uppercase leading-tight truncate">
-                            {meta.name}
-                          </div>
-                          <div className="text-[9px] font-semibold text-[var(--text-secondary)] tracking-wider uppercase">
-                            AGENT · {meta.domain}
-                          </div>
-                        </div>
-
-                        {/* Bottom Row: Status Badge & Contribution */}
-                        <div className="flex items-center justify-between pt-1 border-t border-[var(--border)]">
-                          <span className={`text-[8.5px] px-1.5 py-0.5 rounded font-mono font-bold border truncate max-w-[95px] ${meta.statusColor}`}>
-                            {meta.status}
-                          </span>
-                          <span className="font-mono text-[9px] font-bold text-[var(--danger)] bg-rose-500/10 px-1 py-0.5 rounded border border-rose-500/20">
-                            {meta.riskContribution}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                {renderNeuralGraph('neural', false)}
               </div>
 
-              {/* Pan & Drag Hint */}
-              <div className="absolute bottom-2 right-3 pointer-events-none text-[10px] font-mono text-[var(--text-muted)] bg-[var(--surface)]/80 px-2 py-0.5 rounded border border-[var(--border)] backdrop-blur-xs flex items-center gap-1.5">
-                <span>Drag nodes · Pan canvas · Click agent to inspect</span>
+              {/* Bottom Canvas Interactive Legend */}
+              <div className="absolute bottom-2 left-3 right-3 pointer-events-none flex flex-wrap items-center justify-between text-[10px] font-mono text-slate-400 bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 backdrop-blur-md gap-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-slate-300 font-bold">5-Layer Graph:</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-cyan-400" /> Layer 0: Trigger</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-purple-400" /> Layer 1: 6 Domains</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-400" /> Layer 2: Correlator</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Layer 3: Verifier</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" /> Layer 4: Narrator</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <span>Pan: Drag canvas</span>
+                  <span>•</span>
+                  <span>Shortcuts: 1-9,0 (Select), Space (Play)</span>
+                </div>
               </div>
             </div>
 
@@ -1566,6 +1802,7 @@ export const InvestigationWorkspace: React.FC = () => {
               </button>
             </div>
           )}
+
           {/* ─── 3. DYNAMIC AGENT INTELLIGENCE PANEL (Drawer) ───────────────────── */}
           <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs p-4 flex flex-col gap-3.5 animate-in fade-in duration-200">
             {/* Panel Header */}
@@ -1675,7 +1912,7 @@ export const InvestigationWorkspace: React.FC = () => {
             </div>
           </div>
 
-          {/* ─── 4. EVIDENCE CORRELATION MAP (Requirement 14) ──────────────────── */}
+          {/* ─── 4. EVIDENCE CORRELATION MAP ──────────────────────────────────── */}
           <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-xs p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
               <div className="flex items-center gap-2">
@@ -2133,79 +2370,91 @@ export const InvestigationWorkspace: React.FC = () => {
         </div>
       )}
 
-      {/* ─── 7. REAL WORKING FULLSCREEN WORKSPACE OVERLAY (Requirement 1 & 2) ─── */}
+      {/* ─── 7. REAL WORKING FULLSCREEN WORKSPACE OVERLAY ──────────────────────── */}
       {isFullscreen && (
         <div
-          className="fixed inset-0 z-[100] bg-[var(--background)]/98 backdrop-blur-md flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+          className="fixed inset-0 z-[100] bg-[#060911]/98 backdrop-blur-md flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
           role="dialog"
           aria-modal="true"
-          aria-label="Investigation Pipeline Fullscreen Topology"
+          aria-label="Investigation Pipeline Fullscreen Neural Topology"
         >
           {/* Top Floating Fullscreen Header & Toolbar */}
-          <div className="h-14 px-5 border-b border-[var(--border)] bg-[var(--surface)] flex items-center justify-between shrink-0 shadow-xs z-30">
+          <div className="h-14 px-5 border-b border-slate-800 bg-[#0F172A] flex items-center justify-between shrink-0 shadow-xs z-30">
             {/* Left: Exit button & Title */}
             <div className="flex items-center gap-3">
               <button
                 onClick={handleExitFullscreen}
-                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-primary)] hover:bg-[var(--surface)] hover:border-[var(--primary)] transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700 hover:border-cyan-400 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
                 title="Exit Fullscreen Mode (Esc)"
               >
-                <ArrowLeft className="h-4 w-4 text-[var(--primary)]" />
+                <ArrowLeft className="h-4 w-4 text-cyan-400" />
                 <span>Exit Fullscreen</span>
-                <span className="text-[10px] font-mono text-[var(--text-secondary)] ml-1 px-1 bg-[var(--surface)] rounded border border-[var(--border)]">ESC</span>
+                <span className="text-[10px] font-mono text-slate-400 ml-1 px-1 bg-slate-900 rounded border border-slate-700">ESC</span>
               </button>
 
-              <div className="h-5 w-px bg-[var(--border)] hidden sm:block" />
+              <div className="h-5 w-px bg-slate-800 hidden sm:block" />
 
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-black uppercase text-[var(--text-primary)] tracking-wide">
-                    AI INVESTIGATION PIPELINE TOPOLOGY
+                  <span className="text-xs font-black uppercase text-slate-100 tracking-wide">
+                    AI INVESTIGATION NEURAL TOPOLOGY
                   </span>
-                  <span className="badge text-[9px] font-bold bg-rose-500/10 text-[var(--danger)] border border-rose-500/20">
+                  <span className="badge text-[9px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
                     {riskResult.riskScore}/100 {riskResult.riskLevel}
                   </span>
                 </div>
-                <div className="text-[10px] text-[var(--text-secondary)]">
+                <div className="text-[10px] text-slate-400">
                   11 specialized autonomous agents · {riskResult.triggeredSignals.length} correlated signals · Multi-institution telemetry
                 </div>
               </div>
             </div>
 
             {/* Center: Mini HUD */}
-            <div className="hidden xl:flex items-center gap-3 text-xs font-mono bg-[var(--surface-muted)] px-3 py-1 rounded-lg border border-[var(--border)]">
+            <div className="hidden xl:flex items-center gap-3 text-xs font-mono bg-slate-900 px-3 py-1 rounded-lg border border-slate-800 text-slate-300">
               <div className="flex items-center gap-1">
-                <span className="text-[var(--text-secondary)]">Target:</span>
-                <span className="font-bold text-[var(--text-primary)]">{input.customer.name}</span>
+                <span className="text-slate-400">Target:</span>
+                <span className="font-bold text-slate-100">{input.customer.name}</span>
               </div>
               <span>•</span>
               <div className="flex items-center gap-1">
-                <span className="text-[var(--text-secondary)]">Txn:</span>
-                <span className="font-semibold text-[var(--primary)]">{input.transaction.transaction_id}</span>
+                <span className="text-slate-400">Txn:</span>
+                <span className="font-semibold text-cyan-400">{input.transaction.transaction_id}</span>
               </div>
               <span>•</span>
               <div className="flex items-center gap-1">
-                <span className="text-[var(--text-secondary)]">Amount:</span>
-                <span className="font-extrabold text-[var(--text-primary)]">₹{input.transaction.amount?.toLocaleString()}</span>
+                <span className="text-slate-400">Amount:</span>
+                <span className="font-extrabold text-slate-100">₹{input.transaction.amount?.toLocaleString()}</span>
               </div>
               <span>•</span>
               <div className="flex items-center gap-1">
-                <span className="text-[var(--text-secondary)]">Action:</span>
-                <span className="font-bold text-[var(--danger)]">{riskResult.decision.replace(/_/g, ' ')}</span>
+                <span className="text-slate-400">Action:</span>
+                <span className="font-bold text-rose-400">{riskResult.decision.replace(/_/g, ' ')}</span>
               </div>
             </div>
 
             {/* Right: Controls & Drawer toggle */}
             <div className="flex items-center gap-2">
               {/* Layout Switcher */}
-              <div className="flex items-center bg-[var(--surface-muted)] p-0.5 rounded-lg border border-[var(--border)]">
+              <div className="flex items-center bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+                <button
+                  onClick={() => {
+                    setFullscreenLayout('neural');
+                    setTimeout(fitToViewFullscreen, 50);
+                  }}
+                  className={`px-2 py-1 text-[11px] font-bold rounded cursor-pointer transition-colors ${
+                    fullscreenLayout === 'neural' ? 'bg-cyan-500 text-slate-950 shadow-xs' : 'text-slate-400 hover:text-slate-100'
+                  }`}
+                  title="5-Layer Neural Network Graph"
+                >
+                  Neural Net
+                </button>
                 <button
                   onClick={() => {
                     setFullscreenLayout('grid');
                     setTimeout(fitToViewFullscreen, 50);
                   }}
                   className={`px-2 py-1 text-[11px] font-bold rounded cursor-pointer transition-colors ${
-                    fullscreenLayout === 'grid' ? 'bg-[var(--surface)] text-[var(--primary)] shadow-xs' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    fullscreenLayout === 'grid' ? 'bg-cyan-500 text-slate-950 shadow-xs' : 'text-slate-400 hover:text-slate-100'
                   }`}
                   title="2-Row Adaptive Grid Layout"
                 >
@@ -2217,7 +2466,7 @@ export const InvestigationWorkspace: React.FC = () => {
                     setTimeout(fitToViewFullscreen, 50);
                   }}
                   className={`px-2 py-1 text-[11px] font-bold rounded cursor-pointer transition-colors ${
-                    fullscreenLayout === 'flow' ? 'bg-[var(--surface)] text-[var(--primary)] shadow-xs' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    fullscreenLayout === 'flow' ? 'bg-cyan-500 text-slate-950 shadow-xs' : 'text-slate-400 hover:text-slate-100'
                   }`}
                   title="Single-Row Linear Flow"
                 >
@@ -2225,14 +2474,14 @@ export const InvestigationWorkspace: React.FC = () => {
                 </button>
               </div>
 
-              <div className="h-4 w-px bg-[var(--border)]" />
+              <div className="h-4 w-px bg-slate-800" />
 
               <button
                 onClick={() => setIsPlayingDemo(!isPlayingDemo)}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
                   isPlayingDemo
-                    ? 'bg-[var(--primary)] text-white border-[var(--primary)] animate-pulse'
-                    : 'bg-[var(--surface)] text-[var(--primary)] border-[var(--border)] hover:bg-[var(--surface-muted)]'
+                    ? 'bg-cyan-500 text-slate-950 border-cyan-400 animate-pulse'
+                    : 'bg-slate-800 text-cyan-400 border-slate-700 hover:bg-slate-700'
                 }`}
                 title="Play/Pause Pipeline (Space)"
               >
@@ -2243,7 +2492,7 @@ export const InvestigationWorkspace: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <Play className="h-3.5 w-3.5 text-[var(--primary)]" />
+                    <Play className="h-3.5 w-3.5 text-cyan-400" />
                     <span>Play Pipeline</span>
                   </>
                 )}
@@ -2251,41 +2500,41 @@ export const InvestigationWorkspace: React.FC = () => {
 
               <button
                 onClick={zoomIn}
-                className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
+                className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
                 title="Zoom In (+)"
               >
                 <ZoomIn className="h-4 w-4" />
               </button>
               <button
                 onClick={zoomOut}
-                className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
+                className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
                 title="Zoom Out (-)"
               >
                 <ZoomOut className="h-4 w-4" />
               </button>
               <button
                 onClick={fitToViewFullscreen}
-                className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
+                className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
                 title="Fit to Window (F)"
               >
                 <Check className="h-4 w-4" />
               </button>
               <button
                 onClick={resetLayout}
-                className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
+                className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
                 title="Reset Layout (R)"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
 
-              <div className="h-4 w-px bg-[var(--border)]" />
+              <div className="h-4 w-px bg-slate-800" />
 
               <button
                 onClick={() => setShowDrawerInFullscreen(!showDrawerInFullscreen)}
                 className={`px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-colors cursor-pointer flex items-center gap-1 ${
                   showDrawerInFullscreen
-                    ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
-                    : 'bg-[var(--surface)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--surface-muted)]'
+                    ? 'bg-cyan-500 text-slate-950 border-cyan-400'
+                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
                 }`}
                 title="Toggle Intelligence Drawer"
               >
@@ -2295,7 +2544,7 @@ export const InvestigationWorkspace: React.FC = () => {
 
               <button
                 onClick={handleExitFullscreen}
-                className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--danger)] hover:bg-rose-500/10 cursor-pointer"
+                className="p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
                 title="Close Fullscreen (Esc)"
               >
                 <X className="h-4 w-4" />
@@ -2311,10 +2560,10 @@ export const InvestigationWorkspace: React.FC = () => {
               onPointerDown={handleFullscreenPointerDown}
               onPointerMove={handleFullscreenPointerMove}
               onPointerUp={handleFullscreenPointerUp}
-              className="flex-1 h-full relative overflow-hidden bg-[var(--background)] cursor-grab active:cursor-grabbing select-none"
+              className="flex-1 h-full relative overflow-hidden bg-[#060911] cursor-grab active:cursor-grabbing select-none"
               style={{
-                backgroundImage: resolvedTheme === 'dark' ? 'radial-gradient(#22354D 1px, transparent 1px)' : 'radial-gradient(#CBD5E1 0.75px, transparent 0.75px)',
-                backgroundSize: '20px 20px'
+                backgroundImage: 'radial-gradient(circle, rgba(56, 189, 248, 0.08) 1.5px, transparent 1.5px)',
+                backgroundSize: '24px 24px'
               }}
             >
               <div
@@ -2324,184 +2573,16 @@ export const InvestigationWorkspace: React.FC = () => {
                   transformOrigin: '0 0'
                 }}
               >
-                {/* SVG Connections in Fullscreen */}
-                <svg
-                  className="absolute pointer-events-none overflow-visible"
-                  style={{ width: '3200px', height: '1200px' }}
-                >
-                  <defs>
-                    <marker
-                      id="arrow-fs-default"
-                      viewBox="0 0 10 10"
-                      refX="8"
-                      refY="5"
-                      markerWidth="6"
-                      markerHeight="6"
-                      orient="auto-start-reverse"
-                    >
-                      <path d="M 0 1 L 9 5 L 0 9 z" fill={resolvedTheme === 'dark' ? '#304761' : '#94A3B8'} />
-                    </marker>
-                    <marker
-                      id="arrow-fs-active"
-                      viewBox="0 0 10 10"
-                      refX="8"
-                      refY="5"
-                      markerWidth="6"
-                      markerHeight="6"
-                      orient="auto-start-reverse"
-                    >
-                      <path d="M 0 1 L 9 5 L 0 9 z" fill="var(--primary)" />
-                    </marker>
-                  </defs>
-
-                  {AGENT_METAS.slice(0, -1).map((meta, i) => {
-                    const nextMeta = AGENT_METAS[i + 1];
-                    const p1 = fullscreenLayout === 'grid' ? getNodePosGrid(i, meta.name) : getNodePosFlow(i, meta.name);
-                    const p2 = fullscreenLayout === 'grid' ? getNodePosGrid(i + 1, nextMeta.name) : getNodePosFlow(i + 1, nextMeta.name);
-
-                    const x1 = p1.x + p1.w;
-                    const y1 = p1.y + p1.h / 2;
-                    const x2 = p2.x;
-                    const y2 = p2.y + p2.h / 2;
-
-                    const isSourceOrTargetSelected =
-                      selectedAgentName === meta.name || selectedAgentName === nextMeta.name;
-
-                    const isEdgeCritical =
-                      meta.status === 'CRITICAL' || nextMeta.status === 'CRITICAL';
-
-                    let strokeColor = resolvedTheme === 'dark' ? '#22354D' : '#CBD5E1';
-                    let markerId = 'url(#arrow-fs-default)';
-
-                    if (isSourceOrTargetSelected) {
-                      strokeColor = 'var(--primary)';
-                      markerId = 'url(#arrow-fs-active)';
-                    } else if (isEdgeCritical) {
-                      strokeColor = resolvedTheme === 'dark' ? 'rgba(255, 107, 118, 0.4)' : '#FDA4AF';
-                    }
-
-                    // Cubic Bezier curve for smooth transition
-                    const dx = Math.abs(x2 - x1);
-                    const controlOffset = Math.min(dx * 0.5, 60);
-                    const pathD = y1 === y2
-                      ? `M ${x1} ${y1} L ${x2 - 8} ${y2}`
-                      : `M ${x1} ${y1} C ${x1 + controlOffset} ${y1}, ${x2 - controlOffset} ${y2}, ${x2 - 8} ${y2}`;
-
-                    const isCurrentPlayEdge = isPlayingDemo && currentPlayIndex === i + 1;
-
-                    return (
-                      <g key={i}>
-                        <path
-                          d={pathD}
-                          fill="transparent"
-                          stroke={strokeColor}
-                          strokeWidth={isSourceOrTargetSelected ? '3' : '2'}
-                          strokeDasharray={meta.name === 'History' || meta.name === 'Challenger' ? '4 3' : 'none'}
-                          markerEnd={markerId}
-                          className="transition-colors duration-200"
-                        />
-                        {isCurrentPlayEdge && (
-                          <circle
-                            cx={(x1 + x2) / 2}
-                            cy={(y1 + y2) / 2}
-                            r="6"
-                            fill="var(--primary)"
-                            className="animate-ping"
-                          />
-                        )}
-                      </g>
-                    );
-                  })}
-                </svg>
-
-                {/* Agent Nodes in Fullscreen */}
-                <div className="relative">
-                  {AGENT_METAS.map((meta, idx) => {
-                    const isSelected = selectedAgentName === meta.name;
-                    const isCurrentlyPlaying = isPlayingDemo && currentPlayIndex === idx;
-                    const isCompletedInPlayback = isPlayingDemo && currentPlayIndex > idx;
-                    const Icon = meta.icon;
-                    const pos = fullscreenLayout === 'grid' ? getNodePosGrid(idx, meta.name) : getNodePosFlow(idx, meta.name);
-
-                    return (
-                      <div
-                        key={meta.name}
-                        onPointerDown={(e) => handleNodePointerDown(e, meta.name)}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedAgentName(meta.name);
-                        }}
-                        style={{
-                          left: `${pos.x}px`,
-                          top: `${pos.y}px`,
-                          width: `${pos.w}px`,
-                          height: `${pos.h}px`,
-                        }}
-                        className={`canvas-node absolute bg-[var(--surface)] rounded-xl border flex flex-col justify-between p-3.5 cursor-grab active:cursor-grabbing transition-all duration-200 shadow-xs ${
-                          isSelected
-                            ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/30 shadow-card -translate-y-1.5 scale-103 z-20'
-                            : isCurrentlyPlaying
-                            ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/40 shadow-card animate-pulse z-20'
-                            : 'border-[var(--border)] hover:border-[var(--border-strong)] hover:shadow-xs z-10 opacity-95 hover:opacity-100 hover:-translate-y-1'
-                        }`}
-                      >
-                        <div
-                          className="absolute top-0 left-0 right-0 h-1.5 rounded-t-xl"
-                          style={{ backgroundColor: meta.accentColor }}
-                        />
-
-                        {/* Top: Stage + Icon + Status symbol */}
-                        <div className="flex items-center justify-between pt-0.5">
-                          <span className="font-mono text-xs font-black text-[var(--text-secondary)]">
-                            {meta.stageNumber}
-                          </span>
-                          <div
-                            className="p-1.5 rounded-lg"
-                            style={{ backgroundColor: `${meta.accentColor}20`, color: meta.accentColor }}
-                          >
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                            isCompletedInPlayback
-                              ? 'text-[var(--success)] bg-emerald-500/10'
-                              : meta.status === 'CRITICAL'
-                              ? 'text-[var(--danger)] bg-rose-500/10'
-                              : 'text-[var(--success)] bg-emerald-500/10'
-                          }`}>
-                            {isCompletedInPlayback ? '✓ VERIFIED' : meta.status === 'CRITICAL' ? '! CRITICAL' : '✓ OK'}
-                          </span>
-                        </div>
-
-                        {/* Middle: Agent Title */}
-                        <div>
-                          <div className="text-sm font-black text-[var(--text-primary)] tracking-tight uppercase leading-tight truncate">
-                            {meta.name}
-                          </div>
-                          <div className="text-[10px] font-semibold text-[var(--text-secondary)] tracking-wider uppercase">
-                            AGENT · {meta.domain}
-                          </div>
-                        </div>
-
-                        {/* Bottom: Status & Latency + Points */}
-                        <div className="flex items-center justify-between pt-1.5 border-t border-[var(--border)]">
-                          <span className="font-mono text-[10px] text-[var(--text-secondary)]">
-                            {meta.latency}
-                          </span>
-                          <span className="font-mono text-[10px] font-bold text-[var(--danger)] bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
-                            {meta.riskContribution}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                {renderNeuralGraph(fullscreenLayout, true)}
               </div>
 
               {/* Fullscreen floating hint */}
-              <div className="absolute bottom-4 left-5 pointer-events-none text-xs font-mono text-[var(--text-muted)] bg-[var(--surface)]/90 px-3 py-1.5 rounded-lg border border-[var(--border)] shadow-xs backdrop-blur-xs flex items-center gap-2">
+              <div className="absolute bottom-4 left-5 pointer-events-none text-xs font-mono text-slate-400 bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 shadow-xs backdrop-blur-md flex items-center gap-2">
                 <span>Pan: Click + Drag Canvas</span>
                 <span>•</span>
                 <span>Move Nodes: Click + Drag Card</span>
+                <span>•</span>
+                <span>Select: 1-9,0</span>
                 <span>•</span>
                 <span>Exit: ESC</span>
               </div>
@@ -2509,26 +2590,26 @@ export const InvestigationWorkspace: React.FC = () => {
 
             {/* Docked / Floating Intelligence Drawer in Fullscreen Mode */}
             {showDrawerInFullscreen && (
-              <div className="w-[360px] h-full bg-[var(--surface)] border-l border-[var(--border)] shadow-elevated p-4 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200 z-20">
+              <div className="w-[360px] h-full bg-[#0F172A] border-l border-slate-800 shadow-2xl p-4 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200 z-20 text-slate-100">
                 <div className="space-y-3.5">
-                  <div className="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
                     <div className="flex items-center gap-2">
                       <div
                         className="flex h-8 w-8 items-center justify-center rounded-lg shadow-xs"
-                        style={{ backgroundColor: `${selectedAgentDetails.meta.accentColor}20`, color: selectedAgentDetails.meta.accentColor }}
+                        style={{ backgroundColor: `${selectedAgentDetails.meta.accentColor}25`, color: selectedAgentDetails.meta.accentColor }}
                       >
                         {React.createElement(selectedAgentDetails.meta.icon, { className: 'h-4 w-4' })}
                       </div>
                       <div>
-                        <h3 className="text-xs font-extrabold text-[var(--text-primary)] uppercase">
+                        <h3 className="text-xs font-extrabold text-slate-100 uppercase">
                           {selectedAgentDetails.meta.name} Agent
                         </h3>
-                        <div className="text-[10px] text-[var(--text-secondary)]">Stage {selectedAgentDetails.meta.stageNumber} · {selectedAgentDetails.meta.domain}</div>
+                        <div className="text-[10px] text-slate-400">Stage {selectedAgentDetails.meta.stageNumber} · {selectedAgentDetails.meta.domain}</div>
                       </div>
                     </div>
                     <button
                       onClick={() => setShowDrawerInFullscreen(false)}
-                      className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] cursor-pointer"
+                      className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
                       title="Collapse Drawer"
                     >
                       <X className="h-4 w-4" />
@@ -2536,48 +2617,48 @@ export const InvestigationWorkspace: React.FC = () => {
                   </div>
 
                   {/* Findings */}
-                  <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] space-y-1">
-                    <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)] block font-mono">
+                  <div className="p-3 rounded-lg border border-slate-800 bg-slate-900 space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block font-mono">
                       Analytical Finding
                     </span>
-                    <p className="text-xs text-[var(--text-primary)] font-medium leading-relaxed">
+                    <p className="text-xs text-slate-200 font-medium leading-relaxed">
                       {selectedAgentDetails.finding}
                     </p>
                   </div>
 
                   {/* Metrics */}
-                  <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] space-y-1.5 font-mono text-xs">
-                    <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)] block font-sans mb-1">Telemetry Metrics</span>
+                  <div className="p-3 rounded-lg border border-slate-800 bg-[#0B0F19] space-y-1.5 font-mono text-xs">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block font-sans mb-1">Telemetry Metrics</span>
                     {selectedAgentDetails.metrics.map((m, idx) => (
                       <div key={idx} className="flex justify-between text-[11px]">
-                        <span className="text-[var(--text-secondary)]">{m.label}:</span>
-                        <span className="font-bold text-[var(--text-primary)]">{m.value}</span>
+                        <span className="text-slate-400">{m.label}:</span>
+                        <span className="font-bold text-slate-100">{m.value}</span>
                       </div>
                     ))}
                   </div>
 
                   {/* Evidence */}
                   <div className="space-y-1">
-                    <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)] block">Evidence Cryptographic Signatures</span>
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Evidence Parameters</span>
                     <div className="space-y-1 text-xs">
                       {selectedAgentDetails.evidence.map((ev, idx) => (
-                        <div key={idx} className="p-2 rounded bg-[var(--surface-muted)] border border-[var(--border)] flex justify-between">
-                          <span className="text-[var(--text-secondary)]">{ev.key}:</span>
-                          <span className="font-mono font-bold text-[var(--text-primary)]">{ev.val}</span>
+                        <div key={idx} className="p-2 rounded bg-slate-900 border border-slate-800 flex justify-between">
+                          <span className="text-slate-400">{ev.key}:</span>
+                          <span className="font-mono font-bold text-slate-100">{ev.val}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-[var(--border)] text-xs">
-                  <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                <div className="pt-3 border-t border-slate-800 text-xs">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
                     <span>Attribution:</span>
-                    <span className="font-bold font-mono text-[var(--danger)]">{selectedAgentDetails.riskContribution}</span>
+                    <span className="font-bold font-mono text-rose-400">{selectedAgentDetails.riskContribution}</span>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] mt-1">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
                     <span>Confidence:</span>
-                    <span className="font-bold font-mono text-[var(--success)]">{selectedAgentDetails.confidence}</span>
+                    <span className="font-bold font-mono text-emerald-400">{selectedAgentDetails.confidence}</span>
                   </div>
                 </div>
               </div>
