@@ -31,7 +31,7 @@ export const LandingPage: React.FC = () => {
     setIsAuthModalOpen(true);
   };
 
-  const handleEnterDemo = async (target: string = 'simulation') => {
+  const handleEnterDemo = async (target: string = 'product-tour') => {
     if (isAuthenticating) return;
     setIsAuthenticating(true);
     try {
@@ -39,7 +39,7 @@ export const LandingPage: React.FC = () => {
       await signInAnonymously();
     } catch (err) {
       console.error('[FinGuard Landing] Demo sign in failed:', err);
-      window.location.hash = target;
+      handleOpenAuth('signin', target);
     } finally {
       setIsAuthenticating(false);
     }
@@ -57,7 +57,7 @@ export const LandingPage: React.FC = () => {
       {/* ─── 1. FLOATING NAVBAR ─── */}
       <LandingNavbar
         onOpenAuth={(tab) => handleOpenAuth(tab || 'signin', 'command-center')}
-        onEnterDemo={(route) => handleEnterDemo(route || 'simulation')}
+        onEnterDemo={(route) => handleEnterDemo(route || 'product-tour')}
         isAuthenticating={isAuthenticating}
       />
 
@@ -110,8 +110,9 @@ export const LandingPage: React.FC = () => {
 
                 {/* Secondary CTA: Watch Live Simulation */}
                 <button
-                  onClick={() => handleScrollToSection('simulation-preview')}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] dark:border-white/20 bg-[var(--surface)] dark:bg-white/[0.05] px-5 py-3.5 text-sm font-semibold text-[var(--text-primary)] dark:text-slate-200 hover:bg-[var(--surface-muted)] dark:hover:bg-white/10 hover:border-[var(--border-strong)] dark:hover:border-white/30 backdrop-blur-sm transition-all cursor-pointer shadow-xs"
+                  onClick={() => handleEnterDemo('simulation')}
+                  disabled={isAuthenticating}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] dark:border-white/20 bg-[var(--surface)] dark:bg-white/[0.05] px-5 py-3.5 text-sm font-semibold text-[var(--text-primary)] dark:text-slate-200 hover:bg-[var(--surface-muted)] dark:hover:bg-white/10 hover:border-[var(--border-strong)] dark:hover:border-white/30 backdrop-blur-sm transition-all cursor-pointer shadow-xs disabled:opacity-50"
                 >
                   <Play className="h-4 w-4 fill-current text-[#3157D5] dark:text-[#22D3EE]" />
                   <span>Watch Live Simulation</span>

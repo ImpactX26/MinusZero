@@ -66,14 +66,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await fbSignInAnonymously(auth);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to authenticate anonymously';
-      console.warn('[FinGuard Auth] Anonymous auth unavailable or restricted, using demo session fallback:', msg);
-      setUser({
-        uid: 'demo-investigator-anon',
-        email: 'demo@finguard.ai',
-        displayName: 'Demo Investigator (Guest)',
-        isAnonymous: true,
-      });
-      setError(null);
+      console.error('[FinGuard Auth] Anonymous authentication failed:', msg);
+      setError(msg);
+      setUser(null);
+      throw err;
     } finally {
       setLoading(false);
     }

@@ -9,10 +9,10 @@ import { Shield, Loader2 } from 'lucide-react';
 const AppContent: React.FC = () => {
   const { user, loading, signInAnonymously } = useAuth();
 
-  // Seamless authentication entry for direct device and SOC routes
+  // Seamless authentication entry for direct device, SOC, and tour routes
   React.useEffect(() => {
     const rawHash = window.location.hash.toLowerCase();
-    if (!loading && !user && (rawHash.includes('device') || rawHash.includes('soc'))) {
+    if (!loading && !user && (rawHash.includes('device') || rawHash.includes('soc') || rawHash.includes('tour') || rawHash.includes('product-tour'))) {
       signInAnonymously().catch((err) => {
         console.warn('[FinGuard App] Auto anonymous auth error:', err);
       });

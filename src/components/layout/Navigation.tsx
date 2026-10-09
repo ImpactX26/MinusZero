@@ -23,7 +23,8 @@ export type NavigationTab =
   | 'settings'
   | 'investigation-workspace'
   | 'device'
-  | 'soc';
+  | 'soc'
+  | 'product-tour';
 
 interface NavigationProps {
   activeTab: NavigationTab;

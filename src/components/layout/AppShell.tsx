@@ -15,9 +15,11 @@ import { Settings } from '../../pages/Settings';
 import { InvestigationWorkspace } from '../../pages/InvestigationWorkspace';
 import { MultiBankSimulation } from '../../pages/MultiBankSimulation';
 import { DeviceFoundationView } from '../../pages/DeviceFoundationView';
+import { ProductTour } from '../../pages/ProductTour';
 
 function parseHashTab(rawHash: string): NavigationTab {
   const cleaned = rawHash.replace(/^#\/?/, '').split('?')[0].toLowerCase() as NavigationTab;
+  if (cleaned === 'tour' as any) return 'product-tour';
   const validTabs: NavigationTab[] = [
     'command-center',
     'live-events',
@@ -31,6 +33,7 @@ function parseHashTab(rawHash: string): NavigationTab {
     'investigation-workspace',
     'device',
     'soc',
+    'product-tour',
   ];
   return validTabs.includes(cleaned) ? cleaned : 'command-center';
 }
@@ -80,6 +83,8 @@ export const AppShell: React.FC = () => {
         return <Settings />;
       case 'investigation-workspace':
         return <InvestigationWorkspace />;
+      case 'product-tour':
+        return <ProductTour onNavigateTab={handleSelectTab} />;
       default:
         return <CommandCenter />;
     }
