@@ -94,6 +94,63 @@ export interface Translations {
   presetHigh: string;
   presetCritical: string;
   sendPaymentAction: (amount: string) => string;
+
+  // Identity Selection Screen
+  chooseDemoUser: string;
+  demoEnvironment: string;
+  chooseIdentityDesc: string;
+  loggingIn: string;
+  logIn: string;
+  hardwareLabel: (devId: string) => string;
+  initializing: string;
+
+  // Account Card
+  adversarialNotice: string;
+  cautionLimitShort: (amt: string) => string;
+  maxLimitShort: (amt: string) => string;
+
+  // Payment Composer Extras
+  quickPresetsTitle: string;
+  paymentDetailsTitle: string;
+  syntheticBadge: string;
+  selectMerchantLabel: string;
+  amountInputLabel: string;
+  maxLimitHint: (amt: string) => string;
+  resetAmount: string;
+  paymentChannelLabel: string;
+  evaluatingAndRouting: string;
+  txnStatusBlocked: string;
+  txnStatusCancelled: string;
+  txnStatusCompleted: string;
+
+  // Activity Tab
+  userTransactionsTitle: (name: string) => string;
+  isolatedAccountActivity: string;
+  noTransactionsYet: (name: string) => string;
+  limitsSnapshotLabel: (caution: string, max: string) => string;
+
+  // Security & Profile
+  firestoreEnforced: string;
+  configureLimitsDesc: (acc: string) => string;
+  userProfileTitle: string;
+  accountHolder: string;
+  bankInstitution: string;
+  maskedAccountLabel: string;
+  customerIdentifier: string;
+  hardwareDeviceId: string;
+  currentLanguage: string;
+
+  // Modals & Banners
+  messagesCount: (count: number) => string;
+  paymentAmountLabel: string;
+  merchantLabel: string;
+  exceedsCautionMessage: (caution: string) => string;
+  securityAlertBlocked: string;
+
+  // Greetings
+  greetingMorning: string;
+  greetingAfternoon: string;
+  greetingEvening: string;
 }
 
 export const TRANSLATIONS: Record<AppLanguage, Translations> = {
@@ -197,9 +254,59 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
     sendMoneyHeader: 'Instant Payment Transfer',
     presetNormal: 'Normal',
     presetCaution: 'Caution',
-    presetHigh: 'High',
+    presetHigh: 'High Value',
     presetCritical: 'Critical Demo',
     sendPaymentAction: (amount) => `SEND PAYMENT (₹${amount})`,
+
+    chooseDemoUser: 'Choose Demo User',
+    demoEnvironment: 'DEMO ENVIRONMENT • SYNTHETIC ACCOUNTS',
+    chooseIdentityDesc: 'Choose an identity to log in to this physical phone.',
+    loggingIn: 'Logging in…',
+    logIn: 'Log In',
+    hardwareLabel: (devId) => `Hardware: ${devId}`,
+    initializing: 'Initializing',
+
+    adversarialNotice: 'Adversarial Testing Account • Infiltrating C1003 Target',
+    cautionLimitShort: (amt) => `Caution: >₹${amt}`,
+    maxLimitShort: (amt) => `Max: ₹${amt}`,
+
+    quickPresetsTitle: 'Quick Payment Presets',
+    paymentDetailsTitle: 'Payment Details',
+    syntheticBadge: 'INR Synthetic',
+    selectMerchantLabel: 'Destination Merchant',
+    amountInputLabel: 'Amount (INR)',
+    maxLimitHint: (amt) => `Max: ₹${amt}`,
+    resetAmount: 'Reset',
+    paymentChannelLabel: 'Payment Channel',
+    evaluatingAndRouting: 'Evaluating Limits & Routing…',
+    txnStatusBlocked: 'TRANSACTION BLOCKED',
+    txnStatusCancelled: 'TRANSACTION CANCELLED',
+    txnStatusCompleted: 'TRANSACTION COMPLETED',
+
+    userTransactionsTitle: (name) => `${name}’s Transactions`,
+    isolatedAccountActivity: 'Isolated account activity',
+    noTransactionsYet: (name) => `No transactions recorded for ${name} yet.`,
+    limitsSnapshotLabel: (caution, max) => `Limits Snapshot: Caution ₹${caution} • Max ₹${max}`,
+
+    firestoreEnforced: 'FIRESTORE ENFORCED',
+    configureLimitsDesc: (acc) => `Configure spending boundaries for account ${acc}. Limits are authoritative and evaluated before transactions route to payment rails.`,
+    userProfileTitle: 'User Profile & Hardware',
+    accountHolder: 'Account Holder',
+    bankInstitution: 'Bank Institution',
+    maskedAccountLabel: 'Masked Account',
+    customerIdentifier: 'Customer Identifier',
+    hardwareDeviceId: 'Hardware Device ID',
+    currentLanguage: 'English',
+
+    messagesCount: (count) => `${count} messages`,
+    paymentAmountLabel: 'Payment Amount:',
+    merchantLabel: 'Merchant:',
+    exceedsCautionMessage: (caution) => `This payment exceeds your configured caution threshold of ₹${caution}. Explicit verification is required to complete transaction.`,
+    securityAlertBlocked: 'Security Alert: This transaction was blocked by fraud risk policy and cannot be approved.',
+
+    greetingMorning: 'Good Morning',
+    greetingAfternoon: 'Good Afternoon',
+    greetingEvening: 'Good Evening',
   },
 
   kn: {
@@ -305,5 +412,55 @@ export const TRANSLATIONS: Record<AppLanguage, Translations> = {
     presetHigh: 'ಹೆಚ್ಚಿನ ಮೌಲ್ಯ',
     presetCritical: 'ಕ್ರಿಟಿಕಲ್ ಡೆಮೊ',
     sendPaymentAction: (amount) => `ಪಾವತಿ ಕಳುಹಿಸಿ (₹${amount})`,
+
+    chooseDemoUser: 'ಡೆಮೊ ಬಳಕೆದಾರರನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+    demoEnvironment: 'ಡೆಮೊ ಪರಿಸರ • ಸಿಂಥೆಟಿಕ್ ಖಾತೆಗಳು',
+    chooseIdentityDesc: 'ಈ ಫೋನ್‌ಗೆ ಲಾಗ್ ಇನ್ ಮಾಡಲು ಬಳಕೆದಾರರನ್ನು ಆಯ್ಕೆಮಾಡಿ.',
+    loggingIn: 'ಲಾಗಿನ್ ಆಗುತ್ತಿದೆ…',
+    logIn: 'ಲಾಗಿನ್ ಮಾಡಿ',
+    hardwareLabel: (devId) => `ಹಾರ್ಡ್‌ವೇರ್: ${devId}`,
+    initializing: 'ಆರಂಭಿಸಲಾಗುತ್ತಿದೆ',
+
+    adversarialNotice: 'ಪರೀಕ್ಷಾ ಖಾತೆ • C1003 ಗುರಿಯನ್ನು ತಲುಪಲಾಗುತ್ತಿದೆ',
+    cautionLimitShort: (amt) => `ಎಚ್ಚರಿಕೆ: >₹${amt}`,
+    maxLimitShort: (amt) => `ಗರಿಷ್ಠ: ₹${amt}`,
+
+    quickPresetsTitle: 'ತ್ವರಿತ ಪಾವತಿ ಮುನ್ನೋಟಗಳು',
+    paymentDetailsTitle: 'ಪಾವತಿ ವಿವರಗಳು',
+    syntheticBadge: 'ರೂ. ಸಿಂಥೆಟಿಕ್',
+    selectMerchantLabel: 'ಸ್ವೀಕರಿಸುವ ಮರ್ಚೆಂಟ್',
+    amountInputLabel: 'ಮೊತ್ತ (ರೂ.)',
+    maxLimitHint: (amt) => `ಗರಿಷ್ಠ: ₹${amt}`,
+    resetAmount: 'ಮರುಹೊಂದಿಸಿ',
+    paymentChannelLabel: 'ಪಾವತಿ ಮಾಧ್ಯಮ',
+    evaluatingAndRouting: 'ಮಿತಿಗಳನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ…',
+    txnStatusBlocked: 'ವಹಿವಾಟನ್ನು ನಿರ್ಬಂಧಿಸಲಾಗಿದೆ',
+    txnStatusCancelled: 'ವಹಿವಾಟು ರದ್ದುಗೊಂಡಿದೆ',
+    txnStatusCompleted: 'ವಹಿವಾಟು ಪೂರ್ಣಗೊಂಡಿದೆ',
+
+    userTransactionsTitle: (name) => `${name} ಅವರ ವಹಿವಾಟುಗಳು`,
+    isolatedAccountActivity: 'ಖಾತೆ ಚಟುವಟಿಕೆ',
+    noTransactionsYet: (name) => `${name} ಅವರಿಗೆ ಯಾವುದೇ ವಹಿವಾಟುಗಳು ಇನ್ನೂ ದಾಖಲಾಗಿಲ್ಲ.`,
+    limitsSnapshotLabel: (caution, max) => `ಮಿತಿಗಳ ವಿವರ: ಎಚ್ಚರಿಕೆ ₹${caution} • ಗರಿಷ್ಠ ₹${max}`,
+
+    firestoreEnforced: 'ಫೈರ್‌ಸ್ಟೋರ್ ನಿಯಂತ್ರಿತ',
+    configureLimitsDesc: (acc) => `${acc} ಖಾತೆಗೆ ವಹಿವಾಟು ಮಿತಿಗಳನ್ನು ಹೊಂದಿಸಿ. ಪಾವತಿ ಜಾಲಕ್ಕೆ ಹೋಗುವ ಮೊದಲು ಈ ಮಿತಿಗಳನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತದೆ.`,
+    userProfileTitle: 'ಬಳಕೆದಾರರ ಪ್ರೊಫೈಲ್ ಮತ್ತು ಹಾರ್ಡ್‌ವೇರ್',
+    accountHolder: 'ಖಾತೆದಾರರು',
+    bankInstitution: 'ಬ್ಯಾಂಕ್ ಸಂಸ್ಥೆ',
+    maskedAccountLabel: 'ಖಾತೆ ಸಂಖ್ಯೆ',
+    customerIdentifier: 'ಬಳಕೆದಾರರ ಐಡಿ',
+    hardwareDeviceId: 'ಹಾರ್ಡ್‌ವೇರ್ ಸಾಧನ ಐಡಿ',
+    currentLanguage: 'ಕನ್ನಡ',
+
+    messagesCount: (count) => `${count} ಸಂದೇಶಗಳು`,
+    paymentAmountLabel: 'ಪಾವತಿ ಮೊತ್ತ:',
+    merchantLabel: 'ಮರ್ಚೆಂಟ್:',
+    exceedsCautionMessage: (caution) => `ಈ ಪಾವತಿಯು ನಿಮ್ಮ ₹${caution} ಎಚ್ಚರಿಕೆ ಮಿತಿಯನ್ನು ಮೀರಿದೆ. ಪಾವತಿಯನ್ನು ಪೂರ್ಣಗೊಳಿಸಲು ಪರಿಶೀಲನೆ ಅಗತ್ಯವಿದೆ.`,
+    securityAlertBlocked: 'ಸುರಕ್ಷತಾ ಎಚ್ಚರಿಕೆ: ಈ ವಹಿವಾಟನ್ನು ವಂಚನೆ ತಡೆ ನೀತಿಯಿಂದ ನಿರ್ಬಂಧಿಸಲಾಗಿದೆ ಮತ್ತು ಅನುಮೋದಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ.',
+
+    greetingMorning: 'ಶುಭೋದಯ',
+    greetingAfternoon: 'ಶುಭ ಮಧ್ಯಾಹ್ನ',
+    greetingEvening: 'ಶುಭ ಸಂಜೆ',
   },
 };

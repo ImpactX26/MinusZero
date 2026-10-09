@@ -80,6 +80,13 @@ export const DeviceFoundationView: React.FC = () => {
 
   const t = useMemo(() => TRANSLATIONS[language], [language]);
 
+  const greeting = useMemo(() => {
+    const hr = new Date().getHours();
+    if (hr < 12) return t.greetingMorning;
+    if (hr < 17) return t.greetingAfternoon;
+    return t.greetingEvening;
+  }, [t]);
+
   const handleToggleLanguage = (newLang: AppLanguage) => {
     setLanguage(newLang);
     localStorage.setItem('finguard_app_lang', newLang);
@@ -98,10 +105,15 @@ export const DeviceFoundationView: React.FC = () => {
   const [notifications, setNotifications] = useState<PhoneNotification[]>([]);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState<boolean>(false);
 
+  // Tracks the txn ID of the most recently dismissed approval to prevent popup flash
+  const [dismissedApprovalTxnId, setDismissedApprovalTxnId] = useState<string | null>(null);
+
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
   const activeApprovalNotif = useMemo(
-    () => notifications.find((n) => n.event_type === 'APPROVAL_REQUIRED' && n.action_required),
-    [notifications]
+    () => notifications.find(
+      (n) => n.event_type === 'APPROVAL_REQUIRED' && n.action_required && n.transaction_id !== dismissedApprovalTxnId
+    ),
+    [notifications, dismissedApprovalTxnId]
   );
 
   // 5. User-Configurable Transaction Limits (Persisted in Firestore accounts/{accountId})
@@ -194,8 +206,23 @@ export const DeviceFoundationView: React.FC = () => {
       setErrorMessage(null);
       setLastSubmittedTxn(null);
       setPendingApproval(null);
+      setDismissedApprovalTxnId(null);
     }
   }, [activeIdentity]);
+
+  // Auto-dismiss lastSubmittedTxn feedback after 8 seconds
+  useEffect(() => {
+    if (!lastSubmittedTxn) return;
+    const timer = setTimeout(() => setLastSubmittedTxn(null), 8000);
+    return () => clearTimeout(timer);
+  }, [lastSubmittedTxn]);
+
+  // Auto-clear dismissedApprovalTxnId after 5 seconds (Firestore propagation window)
+  useEffect(() => {
+    if (!dismissedApprovalTxnId) return;
+    const timer = setTimeout(() => setDismissedApprovalTxnId(null), 5000);
+    return () => clearTimeout(timer);
+  }, [dismissedApprovalTxnId]);
 
   // Real-time Firestore transaction listener scoped strictly to the authenticated customer
   useEffect(() => {
@@ -428,6 +455,20 @@ export const DeviceFoundationView: React.FC = () => {
         const pendingNotifs = notifications.filter(
           (n) => n.transaction_id === txnId && n.event_type === 'APPROVAL_REQUIRED' && n.action_required
         );
+
+        // Optimistic local update: immediately mark notifications as resolved
+        // This prevents the floating popup from flashing back while Firestore propagates
+        if (pendingNotifs.length > 0) {
+          const resolvedIds = new Set(pendingNotifs.map((n) => n.notification_id));
+          setNotifications((prev) =>
+            prev.map((n) =>
+              resolvedIds.has(n.notification_id)
+                ? { ...n, action_required: false, read: true }
+                : n
+            )
+          );
+        }
+
         await Promise.all(
           pendingNotifs.map((n) =>
             updateDoc(doc(notificationsCol(), n.notification_id), {
@@ -709,6 +750,7 @@ export const DeviceFoundationView: React.FC = () => {
     setIsSubmitting(true);
     setErrorMessage(null);
     setLastSubmittedTxn(null);
+    setDismissedApprovalTxnId(null);
 
     // Limit Snapshot taken at transaction initiation
     const snapCaution = cautionThreshold;
@@ -1042,6 +1084,18 @@ export const DeviceFoundationView: React.FC = () => {
     const nowIso = new Date().toISOString();
 
     try {
+      // Live Firestore check before updating status
+      const txnSnap = await getDoc(txnRef);
+      if (txnSnap.exists()) {
+        const liveTxn = txnSnap.data() as Transaction;
+        if (liveTxn.status === 'BLOCKED' || liveTxn.decision?.includes('BLOCK')) {
+          setErrorMessage(t.securityAlertBlocked);
+          setPendingApproval(null);
+          setIsProcessingApproval(false);
+          return;
+        }
+      }
+
       await updateDoc(txnRef, {
         status: 'COMPLETED',
         approval_status: 'APPROVED',
@@ -1070,6 +1124,9 @@ export const DeviceFoundationView: React.FC = () => {
 
       // Resolve APPROVAL_REQUIRED notification
       await resolveApprovalNotification(pendingApproval.txnId);
+
+      // Track dismissed approval to suppress popup flash during Firestore propagation
+      setDismissedApprovalTxnId(pendingApproval.txnId);
 
       setLastSubmittedTxn({
         id: pendingApproval.txnId,
@@ -1116,6 +1173,9 @@ export const DeviceFoundationView: React.FC = () => {
 
       // Resolve APPROVAL_REQUIRED notification
       await resolveApprovalNotification(pendingApproval.txnId);
+
+      // Track dismissed approval to suppress popup flash during Firestore propagation
+      setDismissedApprovalTxnId(pendingApproval.txnId);
 
       setLastSubmittedTxn({
         id: pendingApproval.txnId,
@@ -1167,13 +1227,6 @@ export const DeviceFoundationView: React.FC = () => {
     }
   };
 
-  // Greeting helper
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  }, []);
 
   // ══════════════════════════════════════════════════════════════════════════════
   // VIEW A: CLEAN MOBILE LOGIN SCREEN (Shown when user is NOT authenticated)
@@ -1198,10 +1251,10 @@ export const DeviceFoundationView: React.FC = () => {
         <div className="mb-6 p-2.5 rounded-xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-center">
           <div className="flex items-center justify-center gap-1.5 text-[10px] font-mono font-bold text-[var(--text-secondary)]">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span>DEMO ENVIRONMENT • SYNTHETIC ACCOUNTS</span>
+            <span>{t.demoEnvironment}</span>
           </div>
           <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
-            Choose an identity to log in to this physical phone.
+            {t.chooseIdentityDesc}
           </p>
         </div>
 
@@ -1216,7 +1269,7 @@ export const DeviceFoundationView: React.FC = () => {
         {/* Choose Demo User List */}
         <div className="space-y-3">
           <div className="text-[11px] font-mono uppercase font-bold text-[var(--text-muted)] px-1">
-            Choose Demo User
+            {t.chooseDemoUser}
           </div>
 
           {(['C1001', 'C1002', 'C1008', 'C1003'] as const).map((idKey) => {
@@ -1273,7 +1326,7 @@ export const DeviceFoundationView: React.FC = () => {
                       ₹{userItem.balance.toLocaleString('en-IN')}
                     </div>
                     <div className="text-[9px] font-mono text-[var(--text-muted)] mt-0.5">
-                      Available
+                      {t.availableBalance}
                     </div>
                   </div>
                 </div>
@@ -1290,11 +1343,11 @@ export const DeviceFoundationView: React.FC = () => {
                     {isLoggingIn ? (
                       <>
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        <span>Logging in…</span>
+                        <span>{t.loggingIn}</span>
                       </>
                     ) : (
                       <>
-                        <span>Log In</span>
+                        <span>{t.logIn}</span>
                         <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
                       </>
                     )}
@@ -1309,7 +1362,7 @@ export const DeviceFoundationView: React.FC = () => {
         <div className="mt-6 pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)] px-1">
           <div className="flex items-center gap-1.5">
             <Smartphone className="h-3 w-3" />
-            <span>Hardware: {deviceId ? `DEV-${deviceId.slice(0, 6).toUpperCase()}` : 'Initializing'}</span>
+            <span>{t.hardwareLabel(deviceId ? `DEV-${deviceId.slice(0, 6).toUpperCase()}` : t.initializing)}</span>
           </div>
           <div className="flex items-center gap-1">
             <span
@@ -1317,7 +1370,7 @@ export const DeviceFoundationView: React.FC = () => {
                 status === 'ONLINE' ? 'bg-emerald-500' : 'bg-amber-500'
               }`}
             />
-            <span>{status}</span>
+            <span>{status === 'ONLINE' ? t.online : t.offline}</span>
           </div>
         </div>
       </div>
@@ -1347,7 +1400,7 @@ export const DeviceFoundationView: React.FC = () => {
             <div className="text-[10px] font-mono text-[var(--text-muted)] flex items-center gap-1">
               <span>{activeIdentity.bankName}</span>
               <span>•</span>
-              <span className="text-emerald-500 font-bold">ONLINE</span>
+              <span className="text-emerald-500 font-bold">{status === 'ONLINE' ? t.online : t.offline}</span>
             </div>
           </div>
         </div>
@@ -1411,7 +1464,7 @@ export const DeviceFoundationView: React.FC = () => {
             onClick={() => {
               window.location.hash = 'command-center';
             }}
-            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-subtle)] transition-colors"
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-subtle)] transition-colors cursor-pointer"
             title="Open SOC Command Center"
           >
             <ExternalLink className="h-3.5 w-3.5" />
@@ -1432,7 +1485,7 @@ export const DeviceFoundationView: React.FC = () => {
         {activeIdentity.role === 'ATTACKER' && (
           <div className="mb-2 py-1 px-2 rounded-md bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-[10px] font-mono flex items-center gap-1.5">
             <AlertTriangle className="h-3 w-3 shrink-0 text-rose-500" />
-            <span>Adversarial Testing Account • Infiltrating C1003 Target</span>
+            <span>{t.adversarialNotice}</span>
           </div>
         )}
 
@@ -1474,10 +1527,10 @@ export const DeviceFoundationView: React.FC = () => {
           </div>
           <div className="text-right text-[9px] font-mono space-y-0.5">
             <div className="text-amber-600 font-semibold">
-              Caution: &gt;₹{cautionThreshold.toLocaleString('en-IN')}
+              {t.cautionLimitShort(cautionThreshold.toLocaleString('en-IN'))}
             </div>
             <div className="text-rose-600 font-semibold">
-              Max: ₹{maxLimit.toLocaleString('en-IN')}
+              {t.maxLimitShort(maxLimit.toLocaleString('en-IN'))}
             </div>
           </div>
         </div>
@@ -1553,11 +1606,22 @@ export const DeviceFoundationView: React.FC = () => {
           {/* Quick Demo Presets */}
           <div>
             <div className="text-[10px] font-mono uppercase font-bold text-[var(--text-muted)] mb-1.5 px-1">
-              Quick Payment Presets
+              {t.quickPresetsTitle}
             </div>
             <div className="grid grid-cols-5 gap-1.5">
               {QUICK_PRESETS.map((p) => {
                 const isMatch = amountStr === String(p.amount);
+                const presetName =
+                  p.id === 'p_normal'
+                    ? t.presetNormal
+                    : p.id === 'p_caution'
+                    ? t.presetCaution
+                    : p.id === 'p_high'
+                    ? t.presetHigh
+                    : p.id === 'p_critical'
+                    ? t.presetCritical
+                    : p.name;
+
                 return (
                   <button
                     key={p.id}
@@ -1569,7 +1633,7 @@ export const DeviceFoundationView: React.FC = () => {
                         : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-default)]'
                     }`}
                   >
-                    <div className="text-[9px] font-bold uppercase truncate">{p.name}</div>
+                    <div className="text-[9px] font-bold uppercase truncate">{presetName}</div>
                     <div className="text-[11px] font-mono font-extrabold mt-0.5 truncate">{p.label}</div>
                   </button>
                 );
@@ -1582,15 +1646,15 @@ export const DeviceFoundationView: React.FC = () => {
             <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
                 <CreditCard className="h-3.5 w-3.5 text-[var(--accent)]" />
-                <span>Payment Details</span>
+                <span>{t.paymentDetailsTitle}</span>
               </span>
-              <span className="text-[10px] font-mono text-[var(--text-muted)]">INR Synthetic</span>
+              <span className="text-[10px] font-mono text-[var(--text-muted)]">{t.syntheticBadge}</span>
             </div>
 
             {/* Merchant Selector */}
             <div>
               <label className="text-[10px] font-mono uppercase font-bold text-[var(--text-muted)] block mb-1">
-                Destination Merchant
+                {t.selectMerchantLabel}
               </label>
               <select
                 value={merchantKey}
@@ -1609,10 +1673,10 @@ export const DeviceFoundationView: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[10px] font-mono uppercase font-bold text-[var(--text-muted)]">
-                  Amount (INR)
+                  {t.amountInputLabel}
                 </label>
                 <div className="text-[9px] font-mono text-[var(--text-muted)]">
-                  Max: ₹{maxLimit.toLocaleString('en-IN')}
+                  {t.maxLimitHint(maxLimit.toLocaleString('en-IN'))}
                 </div>
               </div>
 
@@ -1645,7 +1709,7 @@ export const DeviceFoundationView: React.FC = () => {
                       const current = Number(amountStr) || 0;
                       setAmountStr(String(current + inc));
                     }}
-                    className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                    className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                   >
                     +₹{inc.toLocaleString()}
                   </button>
@@ -1653,9 +1717,9 @@ export const DeviceFoundationView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setAmountStr('1500')}
-                  className="text-[10px] font-mono px-2 py-0.5 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                  className="text-[10px] font-mono px-2 py-0.5 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                 >
-                  Reset
+                  {t.resetAmount}
                 </button>
               </div>
             </div>
@@ -1663,21 +1727,21 @@ export const DeviceFoundationView: React.FC = () => {
             {/* Payment Channel Selector */}
             <div>
               <label className="text-[10px] font-mono uppercase font-bold text-[var(--text-muted)] block mb-1">
-                Payment Channel
+                {t.paymentChannelLabel}
               </label>
               <div className="grid grid-cols-4 gap-1.5">
-                {(['UPI', 'CARD', 'NET_BANKING', 'IMPS'] as TransactionType[]).map((t) => (
+                {(['UPI', 'CARD', 'NET_BANKING', 'IMPS'] as TransactionType[]).map((tType) => (
                   <button
-                    key={t}
+                    key={tType}
                     type="button"
-                    onClick={() => setTxType(t)}
-                    className={`py-1.5 px-1 rounded-lg text-[10px] font-mono font-bold transition-all ${
-                      txType === t
+                    onClick={() => setTxType(tType)}
+                    className={`py-1.5 px-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                      txType === tType
                         ? 'bg-[var(--accent)] text-white shadow-xs'
                         : 'bg-[var(--bg-surface-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:text-[var(--text-primary)]'
                     }`}
                   >
-                    {t.replace('_', ' ')}
+                    {tType.replace('_', ' ')}
                   </button>
                 ))}
               </div>
@@ -1701,12 +1765,12 @@ export const DeviceFoundationView: React.FC = () => {
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Evaluating Limits &amp; Routing…</span>
+                  <span>{t.evaluatingAndRouting}</span>
                 </>
               ) : (
                 <>
                   <Zap className="h-4 w-4" />
-                  <span>SEND PAYMENT (₹{Number(amountStr || 0).toLocaleString('en-IN')})</span>
+                  <span>{t.sendPaymentAction(Number(amountStr || 0).toLocaleString('en-IN'))}</span>
                 </>
               )}
             </button>
@@ -1715,7 +1779,7 @@ export const DeviceFoundationView: React.FC = () => {
           {/* Submission Feedback Banners */}
           {lastSubmittedTxn && (
             <div
-              className={`p-3.5 rounded-2xl border animate-in fade-in duration-200 ${
+              className={`p-3.5 rounded-2xl border animate-in fade-in duration-200 relative ${
                 lastSubmittedTxn.status === 'BLOCKED'
                   ? 'bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-300'
                   : lastSubmittedTxn.status === 'CANCELLED'
@@ -1734,15 +1798,25 @@ export const DeviceFoundationView: React.FC = () => {
                   )}
                   <span className="text-xs font-bold uppercase font-mono">
                     {lastSubmittedTxn.status === 'BLOCKED'
-                      ? 'TRANSACTION BLOCKED'
+                      ? t.txnStatusBlocked
                       : lastSubmittedTxn.status === 'CANCELLED'
-                      ? 'TRANSACTION CANCELLED'
-                      : 'TRANSACTION COMPLETED'}
+                      ? t.txnStatusCancelled
+                      : t.txnStatusCompleted}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono opacity-80">
-                  {new Date(lastSubmittedTxn.timestamp).toLocaleTimeString()}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono opacity-80">
+                    {new Date(lastSubmittedTxn.timestamp).toLocaleTimeString()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setLastSubmittedTxn(null)}
+                    className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                    title="Dismiss"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
 
               <div className="mt-1.5 text-xs">
@@ -1772,16 +1846,16 @@ export const DeviceFoundationView: React.FC = () => {
           <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
             <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 text-[var(--accent)]" />
-              <span>{activeIdentity.name}’s Transactions</span>
+              <span>{t.userTransactionsTitle(activeIdentity.name)}</span>
             </span>
             <span className="text-[9px] font-mono text-[var(--text-muted)]">
-              Isolated account activity
+              {t.isolatedAccountActivity}
             </span>
           </div>
 
           {customerTransactions.length === 0 ? (
             <div className="py-8 text-center text-xs text-[var(--text-muted)] font-mono">
-              No transactions recorded for {activeIdentity.name} yet.
+              {t.noTransactionsYet(activeIdentity.name)}
             </div>
           ) : (
             <div className="space-y-2">
@@ -1806,7 +1880,7 @@ export const DeviceFoundationView: React.FC = () => {
                     )}
                     {tx.caution_threshold && tx.fixed_limit && (
                       <div className="text-[8px] font-mono text-[var(--text-muted)] mt-0.5">
-                        Limits Snapshot: Caution ₹{tx.caution_threshold.toLocaleString()} • Max ₹{tx.fixed_limit.toLocaleString()}
+                        {t.limitsSnapshotLabel(tx.caution_threshold.toLocaleString(), tx.fixed_limit.toLocaleString())}
                       </div>
                     )}
                   </div>
@@ -1828,7 +1902,15 @@ export const DeviceFoundationView: React.FC = () => {
                           : 'bg-indigo-500/10 text-indigo-600'
                       }`}
                     >
-                      {tx.status}
+                      {tx.status === 'COMPLETED'
+                        ? t.eventTitles.PAYMENT_COMPLETED
+                        : tx.status === 'BLOCKED'
+                        ? t.eventTitles.PAYMENT_BLOCKED
+                        : tx.status === 'APPROVAL_REQUIRED'
+                        ? t.eventTitles.APPROVAL_REQUIRED
+                        : tx.status === 'CANCELLED' || tx.status === 'REJECTED'
+                        ? t.eventTitles.PAYMENT_REJECTED
+                        : tx.status}
                     </span>
                   </div>
                 </div>
@@ -1932,21 +2014,20 @@ export const DeviceFoundationView: React.FC = () => {
             <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
                 <Sliders className="h-3.5 w-3.5 text-[var(--accent)]" />
-                <span>Transaction Safety Limits</span>
+                <span>{t.transactionSafetyLimits}</span>
               </span>
-              <span className="text-[10px] font-mono text-emerald-600 font-bold">FIRESTORE ENFORCED</span>
+              <span className="text-[10px] font-mono text-emerald-600 font-bold">{t.firestoreEnforced}</span>
             </div>
 
             <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
-              Configure spending boundaries for account <span className="font-mono font-bold text-[var(--text-primary)]">{activeIdentity.maskedAccount}</span>.
-              Limits are authoritative and evaluated before transactions route to payment rails.
+              {t.configureLimitsDesc(activeIdentity.maskedAccount)}
             </p>
 
             {/* Inputs */}
             <div className="space-y-3">
               <div>
                 <label className="text-[10px] font-mono uppercase font-bold text-amber-600 dark:text-amber-400 block mb-1">
-                  Caution / Approval Threshold (INR)
+                  {t.cautionThresholdLabel}
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-muted)] font-mono">
@@ -1962,13 +2043,13 @@ export const DeviceFoundationView: React.FC = () => {
                   />
                 </div>
                 <span className="text-[9px] text-[var(--text-muted)] block mt-0.5">
-                  Transactions ABOVE this threshold require explicit verification before completion.
+                  {t.cautionThresholdDesc}
                 </span>
               </div>
 
               <div>
                 <label className="text-[10px] font-mono uppercase font-bold text-rose-600 dark:text-rose-400 block mb-1">
-                  Maximum Transaction Limit (Hard Ceiling)
+                  {t.maxLimitLabel}
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-muted)] font-mono">
@@ -1984,7 +2065,7 @@ export const DeviceFoundationView: React.FC = () => {
                   />
                 </div>
                 <span className="text-[9px] text-[var(--text-muted)] block mt-0.5">
-                  Absolute ceiling. Amounts exceeding this value are blocked without override.
+                  {t.maxLimitDesc}
                 </span>
               </div>
             </div>
@@ -2013,10 +2094,10 @@ export const DeviceFoundationView: React.FC = () => {
               {isSavingLimits ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Committing Limits…</span>
+                  <span>{t.savingLimits}</span>
                 </>
               ) : (
-                <span>Save &amp; Enforce Limits</span>
+                <span>{t.saveLimitsBtn}</span>
               )}
             </button>
           </div>
@@ -2026,34 +2107,34 @@ export const DeviceFoundationView: React.FC = () => {
             <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5 text-[var(--accent)]" />
-                <span>User Profile &amp; Hardware</span>
+                <span>{t.userProfileTitle}</span>
               </span>
-              <span className="text-[10px] font-mono text-emerald-600 font-bold">ONLINE</span>
+              <span className="text-[10px] font-mono text-emerald-600 font-bold">{t.online}</span>
             </div>
 
             <div className="space-y-2.5 text-xs">
               <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
-                <span className="text-[var(--text-muted)]">Account Holder</span>
+                <span className="text-[var(--text-muted)]">{t.accountHolder}</span>
                 <span className="font-bold text-[var(--text-primary)]">{activeIdentity.name}</span>
               </div>
 
               <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
-                <span className="text-[var(--text-muted)]">Bank Institution</span>
+                <span className="text-[var(--text-muted)]">{t.bankInstitution}</span>
                 <span className="font-medium text-[var(--text-primary)]">{activeIdentity.bankName}</span>
               </div>
 
               <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
-                <span className="text-[var(--text-muted)]">Masked Account</span>
+                <span className="text-[var(--text-muted)]">{t.maskedAccountLabel}</span>
                 <span className="font-mono text-[var(--text-primary)]">{activeIdentity.maskedAccount}</span>
               </div>
 
               <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
-                <span className="text-[var(--text-muted)]">Customer Identifier</span>
+                <span className="text-[var(--text-muted)]">{t.customerIdentifier}</span>
                 <span className="font-mono text-[var(--accent)] font-bold">{activeIdentity.customerId}</span>
               </div>
 
               <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
-                <span className="text-[var(--text-muted)]">Hardware Device ID</span>
+                <span className="text-[var(--text-muted)]">{t.hardwareDeviceId}</span>
                 <span className="font-mono text-[var(--text-secondary)] text-[10px]">
                   {deviceId ? `DEV-${deviceId.slice(0, 8).toUpperCase()}` : '—'}
                 </span>
@@ -2061,9 +2142,9 @@ export const DeviceFoundationView: React.FC = () => {
 
               <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
                 <span className="text-[var(--text-muted)] flex items-center gap-1">
-                  <Globe className="h-3 w-3" /> Language
+                  <Globe className="h-3 w-3" /> {t.languageLabel}
                 </span>
-                <span className="text-[var(--text-primary)]">English (Default)</span>
+                <span className="text-[var(--text-primary)]">{t.currentLanguage}</span>
               </div>
             </div>
 
@@ -2075,7 +2156,7 @@ export const DeviceFoundationView: React.FC = () => {
                 className="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <LogOut className="h-4 w-4" />
-                <span>LOG OUT OF THIS PHONE</span>
+                <span>{t.logoutButton}</span>
               </button>
             </div>
           </div>
@@ -2218,7 +2299,7 @@ export const DeviceFoundationView: React.FC = () => {
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* 6. REAL-TIME APPROVAL POPUP ALERT (Bottom Floating Card)                   */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      {activeApprovalNotif && !pendingApproval && (
+      {activeApprovalNotif && !pendingApproval && !dismissedApprovalTxnId && (
         <div className="fixed bottom-3 left-3 right-3 z-40 max-w-sm mx-auto p-4 rounded-3xl bg-[var(--bg-surface)] border-2 border-amber-500 shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-start gap-3">
             <div className="h-10 w-10 rounded-2xl bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
@@ -2290,13 +2371,13 @@ export const DeviceFoundationView: React.FC = () => {
             {/* Details Summary */}
             <div className="p-3.5 rounded-2xl bg-[var(--bg-surface-subtle)] border border-[var(--border-subtle)] space-y-2 text-xs font-mono">
               <div className="flex justify-between items-center">
-                <span className="text-[var(--text-muted)]">Payment Amount:</span>
+                <span className="text-[var(--text-muted)]">{t.paymentAmountLabel}</span>
                 <span className="text-base font-extrabold text-[var(--text-primary)]">
                   ₹{pendingApproval.amount.toLocaleString('en-IN')}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[11px]">
-                <span className="text-[var(--text-muted)]">Merchant:</span>
+                <span className="text-[var(--text-muted)]">{t.merchantLabel}</span>
                 <span className="text-[var(--text-primary)] font-semibold truncate max-w-[160px]">
                   {pendingApproval.merchantName}
                 </span>
@@ -2312,11 +2393,7 @@ export const DeviceFoundationView: React.FC = () => {
             </div>
 
             <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
-              This payment exceeds your configured caution threshold of{' '}
-              <span className="font-bold font-mono text-[var(--text-primary)]">
-                ₹{pendingApproval.snapCaution.toLocaleString('en-IN')}
-              </span>
-              . Explicit verification is required to complete transaction.
+              {t.exceedsCautionMessage(pendingApproval.snapCaution.toLocaleString('en-IN'))}
             </p>
 
             {/* Biometric Notice if triggered */}

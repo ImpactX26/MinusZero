@@ -35,13 +35,7 @@ export const Topbar: React.FC = () => {
           </div>
         </div>
 
-        {/* Center: Subtle Synthetic Data Indicator */}
-        <div className="hidden md:flex items-center">
-          <div className="flex items-center gap-1.5 rounded border border-[#FEF08A] dark:border-amber-900/40 bg-[#FEFCE8] dark:bg-amber-950/20 px-2.5 py-0.5 text-[11px] text-[#B7791F] dark:text-amber-400 font-medium">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#B7791F]" />
-            <span>Synthetic Data • Demo Environment</span>
-          </div>
-        </div>
+
 
         {/* Right actions: Theme selector + User session */}
         <div className="flex items-center gap-2.5">

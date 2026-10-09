@@ -31,15 +31,15 @@ export const LandingPage: React.FC = () => {
     setIsAuthModalOpen(true);
   };
 
-  const handleEnterDemo = async (target: string = 'command-center') => {
+  const handleEnterDemo = async (target: string = 'simulation') => {
+    if (isAuthenticating) return;
     setIsAuthenticating(true);
     try {
       window.location.hash = target;
       await signInAnonymously();
     } catch (err) {
       console.error('[FinGuard Landing] Demo sign in failed:', err);
-      // Fallback: Open auth modal with error displayed
-      setIsAuthModalOpen(true);
+      window.location.hash = target;
     } finally {
       setIsAuthenticating(false);
     }
@@ -57,7 +57,7 @@ export const LandingPage: React.FC = () => {
       {/* ─── 1. FLOATING NAVBAR ─── */}
       <LandingNavbar
         onOpenAuth={(tab) => handleOpenAuth(tab || 'signin', 'command-center')}
-        onEnterDemo={() => handleEnterDemo('command-center')}
+        onEnterDemo={(route) => handleEnterDemo(route || 'simulation')}
         isAuthenticating={isAuthenticating}
       />
 

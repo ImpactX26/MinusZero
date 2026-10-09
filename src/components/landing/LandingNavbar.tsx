@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, ArrowRight, Sun, Moon, Laptop, Menu, X, Play } from 'lucide-react';
+import { Shield, ArrowRight, Sun, Moon, Laptop, Menu, X, Play, Loader2 } from 'lucide-react';
 import { useTheme, Theme } from '../../context/ThemeContext';
 
 interface LandingNavbarProps {
   onOpenAuth: (initialTab?: 'signin' | 'signup') => void;
-  onEnterDemo: () => void;
+  onEnterDemo: (targetRoute?: string) => void;
   isAuthenticating?: boolean;
 }
 
@@ -97,13 +97,18 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({
           <div className="hidden sm:flex items-center gap-3">
             {/* Live Demo Quick Action */}
             <button
-              onClick={onEnterDemo}
+              type="button"
+              onClick={() => onEnterDemo('simulation')}
               disabled={isAuthenticating}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#3157D5] dark:text-[#22D3EE] hover:text-white bg-[#3157D5]/10 hover:bg-[#3157D5] dark:bg-[#22D3EE]/10 dark:hover:bg-[#22D3EE]/20 border border-[#3157D5]/30 dark:border-[#22D3EE]/30 rounded-lg transition-all cursor-pointer"
-              title="Instant Demo Access"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#3157D5] dark:text-[#22D3EE] hover:text-white bg-[#3157D5]/10 hover:bg-[#3157D5] dark:bg-[#22D3EE]/10 dark:hover:bg-[#22D3EE]/20 border border-[#3157D5]/30 dark:border-[#22D3EE]/30 rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Launch Live Multi-Bank Fraud Simulation"
             >
-              <Play className="h-3 w-3 fill-current" />
-              <span>Live Demo</span>
+              {isAuthenticating ? (
+                <Loader2 className="h-3 w-3 animate-spin text-current" />
+              ) : (
+                <Play className="h-3 w-3 fill-current" />
+              )}
+              <span>{isAuthenticating ? 'Launching…' : 'Live Demo'}</span>
             </button>
 
             {/* Theme Toggle (Light, Dark, System) */}
@@ -176,14 +181,20 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({
           ))}
           <div className="pt-3 border-t border-[var(--border)] dark:border-white/10 flex flex-col gap-2">
             <button
+              type="button"
               onClick={() => {
                 setMobileMenuOpen(false);
-                onEnterDemo();
+                onEnterDemo('simulation');
               }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[#3157D5]/40 dark:border-[#22D3EE]/40 text-[#3157D5] dark:text-[#22D3EE] font-medium text-xs bg-[#3157D5]/10 dark:bg-[#22D3EE]/10"
+              disabled={isAuthenticating}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[#3157D5]/40 dark:border-[#22D3EE]/40 text-[#3157D5] dark:text-[#22D3EE] font-medium text-xs bg-[#3157D5]/10 dark:bg-[#22D3EE]/10 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Play className="h-3.5 w-3.5 fill-current" />
-              <span>Launch Live Demo</span>
+              {isAuthenticating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-current" />
+              ) : (
+                <Play className="h-3.5 w-3.5 fill-current" />
+              )}
+              <span>{isAuthenticating ? 'Launching Demo…' : 'Launch Live Demo'}</span>
             </button>
             <button
               onClick={() => {
