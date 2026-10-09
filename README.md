@@ -292,9 +292,6 @@ The interface includes:
 
 ![FinGuard AI Simulation](docs/screenshots/multi-bank-simulation.png)
 
-### 🤖 Autonomous Investigation Cockpit
-
-![FinGuard AI Investigation Cockpit](docs/screenshots/investigation-cockpit.png)
 
 ### 📄 Explainable Fraud Investigation Report
 
