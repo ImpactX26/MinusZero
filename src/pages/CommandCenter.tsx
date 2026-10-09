@@ -19,6 +19,7 @@ import {
   CreditCard,
   User,
   Store,
+  Network,
 } from 'lucide-react';
 import {
   Transaction,
@@ -1064,6 +1065,22 @@ export const CommandCenter: React.FC = () => {
                           {selectedTxn?.customer_id === 'C1003' ? 'Cross-Bank Velocity' : 'Isolated Session'}
                         </div>
                       </div>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between pt-3 border-t border-[var(--border)]">
+                      <span className="text-[11px] text-[var(--text-muted)]">
+                        Deep forensic topology across shared emulators, proxy clusters &amp; multi-mule accounts
+                      </span>
+                      <button
+                        onClick={() => {
+                          window.location.hash = 'entity-graph';
+                        }}
+                        className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition"
+                      >
+                        <Network className="h-3.5 w-3.5" />
+                        <span>Open Fraud-Ring Workspace</span>
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
                 )}
