@@ -62,6 +62,7 @@ import {
   runInvestigationForTransaction,
 } from '../investigation/pipeline';
 import { AGENT_METAS } from './InvestigationWorkspace';
+import { FraudCaseReportModal } from '../components/reports/FraudCaseReportModal';
 
 // ─── COLOR & RISK CONFIGURATION ─────────────────────────────────────────────
 const RISK_STYLES: Record<
@@ -179,6 +180,17 @@ export const CommandCenter: React.FC = () => {
     completed: number;
     total: number;
   }>({ agentName: '', completed: 0, total: 11 });
+
+  // 5. Explainable Fraud Case Report Modal State
+  const [reportModalData, setReportModalData] = useState<{
+    isOpen: boolean;
+    caseData?: Case | null;
+    transactionData?: Transaction | null;
+  }>({
+    isOpen: false,
+    caseData: null,
+    transactionData: null,
+  });
 
   // ══════════════════════════════════════════════════════════════════════════
   // FIRESTORE LISTENERS (CLEANUP-SECURED, NO POLLING)
@@ -669,8 +681,24 @@ export const CommandCenter: React.FC = () => {
                 </div>
               </div>
 
-              {/* Action: Trigger 11 Agents */}
+              {/* Action: Trigger 11 Agents & View Case Report */}
               <div className="flex items-center gap-2.5 shrink-0">
+                <button
+                  onClick={() =>
+                    setReportModalData({
+                      isOpen: true,
+                      caseData:
+                        activeCases.find((c) => c.transactionId === selectedTxn.transaction_id) || null,
+                      transactionData: selectedTxn,
+                    })
+                  }
+                  className="flex items-center gap-2 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 px-4 py-2.5 text-xs font-bold text-purple-600 dark:text-purple-400 shadow-sm transition-all"
+                  title="Open Explainable Fraud Case Report"
+                >
+                  <FileText className="h-4 w-4 text-purple-500" />
+                  <span>CASE REPORT</span>
+                </button>
+
                 <button
                   onClick={handleInvestigateSelected}
                   disabled={isInvestigating}
@@ -1175,14 +1203,29 @@ export const CommandCenter: React.FC = () => {
                 </div>
               </div>
 
-              {investigationResults.caseCreated && (
-                <div className="flex items-center gap-2 rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1.5">
-                  <FolderKanban className="h-4 w-4 text-purple-600" />
-                  <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400">
-                    Case #{investigationResults.caseCreated.caseNumber} Auto-Created
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-2.5">
+                {investigationResults.caseCreated && (
+                  <div className="flex items-center gap-2 rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1.5">
+                    <FolderKanban className="h-4 w-4 text-purple-600" />
+                    <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400">
+                      Case #{investigationResults.caseCreated.caseNumber} Auto-Created
+                    </span>
+                  </div>
+                )}
+                <button
+                  onClick={() =>
+                    setReportModalData({
+                      isOpen: true,
+                      caseData: investigationResults.caseCreated || null,
+                      transactionData: selectedTxn || null,
+                    })
+                  }
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md transition"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span>View Full Case Report</span>
+                </button>
+              </div>
             </div>
 
             {/* 11 Agents Grid */}
@@ -1266,13 +1309,29 @@ export const CommandCenter: React.FC = () => {
                         Customer: {c.customerId} • Txn: {c.transactionId}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-600 font-mono">
-                        {c.riskLevel || 'CRITICAL'} ({c.riskScore || 90} pts)
-                      </span>
-                      <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
-                        {c.status || 'INVESTIGATING'}
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-600 font-mono">
+                          {c.riskLevel || 'CRITICAL'} ({c.riskScore || 90} pts)
+                        </span>
+                        <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                          {c.status || 'INVESTIGATING'}
+                        </div>
                       </div>
+                      <button
+                        onClick={() =>
+                          setReportModalData({
+                            isOpen: true,
+                            caseData: c,
+                            transactionData:
+                              rawTransactions.find((tx) => tx.transaction_id === c.transactionId) || null,
+                          })
+                        }
+                        className="p-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] hover:bg-purple-500/10 hover:border-purple-500/30 text-[var(--text-secondary)] hover:text-purple-600 transition"
+                        title="View Explainable Fraud Report"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))
@@ -1323,6 +1382,14 @@ export const CommandCenter: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Explainable Fraud Case Report Modal */}
+      <FraudCaseReportModal
+        isOpen={reportModalData.isOpen}
+        onClose={() => setReportModalData((prev) => ({ ...prev, isOpen: false }))}
+        caseData={reportModalData.caseData}
+        transactionData={reportModalData.transactionData}
+      />
     </div>
   );
 };

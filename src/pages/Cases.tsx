@@ -4,8 +4,10 @@ import { casesCol, auditLogsCol } from '../firebase/collections';
 import { AuditLog, CaseStatus } from '../types';
 import { 
   FolderKanban, Search, X, 
-  Clock, ShieldAlert, MessageSquare
+  Clock, ShieldAlert, MessageSquare,
+  FileText
 } from 'lucide-react';
+import { FraudCaseReportModal } from '../components/reports/FraudCaseReportModal';
 
 export const Cases: React.FC = () => {
   const [cases, setCases] = useState<any[]>([]);
@@ -13,6 +15,7 @@ export const Cases: React.FC = () => {
   const [selectedCase, setSelectedCase] = useState<any | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [newNote, setNewNote] = useState('');
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   useEffect(() => {
     const q = query(casesCol(), orderBy('createdAt', 'desc'));
@@ -191,6 +194,14 @@ export const Cases: React.FC = () => {
                 <option value="ACTIONED">ACTIONED</option>
                 <option value="CLOSED">CLOSED</option>
               </select>
+              <button
+                onClick={() => setIsReportOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs transition"
+                title="Open Explainable Fraud Investigation Report"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                <span>Forensic Report</span>
+              </button>
               <button onClick={() => setSelectedCase(null)} className="hidden lg:flex p-1.5 hover:bg-[var(--bg-surface-subtle)] rounded text-[var(--text-muted)]">
                 <X className="h-4 w-4" />
               </button>
@@ -318,6 +329,13 @@ export const Cases: React.FC = () => {
           </p>
         </div>
       )}
+
+      {/* Explainable Fraud Case Report Modal */}
+      <FraudCaseReportModal
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+        caseData={selectedCase}
+      />
     </div>
   );
 };
